@@ -1,9 +1,9 @@
-//! I use it with `cargo run --example output | dot -Tsvg > in1.svg`
+//! I use it with `cargo run --example output | dot -Tsvg > graph.svg`
 
 use spqr_trees::from_file;
 use spqr_trees::to_dot_str;
 
 fn main() {
-    let graph = from_file("assets/in1.graph");
+    let graph = from_file("assets/graph.in");
     print!("{}", to_dot_str(&graph))
 }

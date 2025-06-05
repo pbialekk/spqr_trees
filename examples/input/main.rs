@@ -2,7 +2,7 @@ use petgraph::visit::EdgeRef;
 use spqr_trees::from_file;
 
 fn main() {
-    let graph = from_file("assets/in1.graph");
+    let graph = from_file("assets/graph.in");
 
     println!("Number of nodes: {}", graph.node_count());
     println!("Number of edges: {}", graph.edge_count());

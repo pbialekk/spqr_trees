@@ -1,6 +1,6 @@
+use crate::UnGraph;
 use fixedbitset::FixedBitSet;
 use hashbrown::HashMap;
-use petgraph::graph::UnGraph;
 use petgraph::visit::{EdgeRef, IntoNodeReferences, NodeIndexable, NodeRef};
 use std::usize;
 
@@ -9,7 +9,7 @@ use std::usize;
 /// Graph should be undirected, connected and simple.
 ///
 /// See `mod parallel_edges`
-pub fn get_palm_tree(g: &UnGraph<u32, String>) -> PalmTree {
+pub fn get_palm_tree(g: &UnGraph) -> PalmTree {
     let graph_size = g.node_references().size_hint().0;
     let edges_size = g.edge_references().size_hint().0;
     let mut palm_tree = PalmTree::new(graph_size, edges_size);
@@ -25,24 +25,20 @@ pub fn get_palm_tree(g: &UnGraph<u32, String>) -> PalmTree {
 }
 
 /// Returns a string representation of the palm tree in dot format.
-pub fn draw_palm_tree(palm_tree: &PalmTree, g: &UnGraph<u32, String>) -> String {
+/// LOWS are ids that you gave to nodes in the graph. They are not discovery times.
+pub fn draw_palm_tree(palm_tree: &PalmTree, g: &UnGraph) -> String {
     let mut dot_str = String::new();
-    dot_str.push_str("digraph PalmTree {\n");
+    dot_str.push_str("digraph {\n");
 
     for node in g.node_references() {
         let node_id = g.to_index(node.id());
-        let low1 = palm_tree
-            .rank_to_node
-            .get(&palm_tree.low1[node_id])
-            .unwrap()
-            .clone();
-        let low2 = palm_tree
-            .rank_to_node
-            .get(&palm_tree.low2[node_id])
-            .unwrap()
-            .clone();
+        let node_label = node.weight();
+        let low1 = palm_tree.rank_to_node[&palm_tree.low1[node_id]];
+        let low2 = palm_tree.rank_to_node[&palm_tree.low2[node_id]];
+        let low1_label = g.node_weight(g.from_index(low1)).unwrap();
+        let low2_label = g.node_weight(g.from_index(low2)).unwrap();
 
-        // Example coloring: root is green, others are lightblue
+        // Coloring: root is green, others are lightblue
         let color = if palm_tree.parent[node_id] == usize::MAX {
             "green"
         } else {
@@ -51,7 +47,7 @@ pub fn draw_palm_tree(palm_tree: &PalmTree, g: &UnGraph<u32, String>) -> String 
 
         dot_str.push_str(&format!(
             "  {} [label=\"ID:{} LOWS: {}|{}\", style=filled, fillcolor={}];\n",
-            node_id, node_id, low1, low2, color
+            node_id, node_label, low1_label, low2_label, color
         ));
     }
 
@@ -65,7 +61,7 @@ pub fn draw_palm_tree(palm_tree: &PalmTree, g: &UnGraph<u32, String>) -> String 
         let target_rank = palm_tree.rank[target_id];
 
         let (from, to) = match label {
-            EdgeLabel::Tree => {
+            DFSEdgeLabel::Tree => {
                 if source_rank < target_rank {
                     (source_id, target_id)
                 } else {
@@ -82,7 +78,7 @@ pub fn draw_palm_tree(palm_tree: &PalmTree, g: &UnGraph<u32, String>) -> String 
         };
 
         let style = match label {
-            EdgeLabel::Back => ", style=\"dotted\"",
+            DFSEdgeLabel::Back => ", style=\"dotted\"",
             _ => "",
         };
 
@@ -98,18 +94,18 @@ pub fn draw_palm_tree(palm_tree: &PalmTree, g: &UnGraph<u32, String>) -> String 
 
 /// Enum to mark edges in DFS tree.
 #[derive(Clone, PartialEq, Eq, Debug)]
-enum EdgeLabel {
+enum DFSEdgeLabel {
     Unvisited,
     Tree,
     Back,
 }
 
-impl std::fmt::Display for EdgeLabel {
+impl std::fmt::Display for DFSEdgeLabel {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match self {
-            EdgeLabel::Unvisited => write!(f, "Unvisited"),
-            EdgeLabel::Tree => write!(f, "Tree"),
-            EdgeLabel::Back => write!(f, "Back"),
+            DFSEdgeLabel::Unvisited => write!(f, "Unvisited"),
+            DFSEdgeLabel::Tree => write!(f, "Tree"),
+            DFSEdgeLabel::Back => write!(f, "Back"),
         }
     }
 }
@@ -125,7 +121,7 @@ pub struct PalmTree {
     descendants: Vec<usize>,
     parent: Vec<usize>,
     time: usize,
-    edge_labels: Vec<EdgeLabel>,
+    edge_labels: Vec<DFSEdgeLabel>,
 }
 
 impl PalmTree {
@@ -139,13 +135,13 @@ impl PalmTree {
             descendants: vec![usize::MAX; graph_size],
             parent: vec![usize::MAX; graph_size],
             time: 0,
-            edge_labels: vec![EdgeLabel::Unvisited; edges_size],
+            edge_labels: vec![DFSEdgeLabel::Unvisited; edges_size],
         }
     }
 }
 
 /// Helper that performs the required DFS in a recursive manner.
-fn _dfs(g: &UnGraph<u32, String>, current_node: usize, _: usize, palm_tree: &mut PalmTree) {
+fn _dfs(g: &UnGraph, current_node: usize, _: usize, palm_tree: &mut PalmTree) {
     palm_tree.rank[current_node] = palm_tree.time;
     palm_tree.rank_to_node.insert(palm_tree.time, current_node);
     palm_tree.visited.insert(current_node);
@@ -156,14 +152,14 @@ fn _dfs(g: &UnGraph<u32, String>, current_node: usize, _: usize, palm_tree: &mut
 
     for edge in g.edges(g.from_index(current_node)) {
         let edge_index = edge.id().index();
-        if palm_tree.edge_labels[edge_index] != EdgeLabel::Unvisited {
+        if palm_tree.edge_labels[edge_index] != DFSEdgeLabel::Unvisited {
             continue;
         }
 
         let child_node = g.to_index(edge.target());
         if !palm_tree.visited.contains(child_node) {
             let edge_index = edge.id().index();
-            palm_tree.edge_labels[edge_index] = EdgeLabel::Tree;
+            palm_tree.edge_labels[edge_index] = DFSEdgeLabel::Tree;
             palm_tree.parent[child_node] = current_node;
 
             _dfs(g, child_node, current_node, palm_tree);
@@ -182,7 +178,7 @@ fn _dfs(g: &UnGraph<u32, String>, current_node: usize, _: usize, palm_tree: &mut
             palm_tree.descendants[current_node] += palm_tree.descendants[child_node];
         } else {
             let edge_index = edge.id().index();
-            palm_tree.edge_labels[edge_index] = EdgeLabel::Back;
+            palm_tree.edge_labels[edge_index] = DFSEdgeLabel::Back;
             if palm_tree.rank[child_node] < palm_tree.low1[current_node] {
                 palm_tree.low2[current_node] = palm_tree.low1[current_node];
                 palm_tree.low1[current_node] = palm_tree.rank[child_node];

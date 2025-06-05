@@ -1,14 +1,25 @@
+use crate::UnGraph;
 use petgraph::dot::{Config, Dot};
-use petgraph::graph::UnGraph;
 
 /// Wrapper for petgraph::dot::Dot.
-/// It actually shows real nodes' ids.
-pub fn to_dot_str(graph: &UnGraph<u32, String>) -> String {
-    Dot::with_config(graph, &[Config::NodeIndexLabel, Config::EdgeNoLabel]).to_string()
+/// It shows your nodes ids, not petgraph's internal indices.
+pub fn to_dot_str(graph: &UnGraph) -> String {
+    Dot::with_attr_getters(
+        graph,
+        &[Config::EdgeNoLabel, Config::NodeNoLabel],
+        &|_, edge_ref| format!("label=\"{}\"", edge_ref.weight()),
+        &|g, node_ref| {
+            format!(
+                "label=\"{}\", style=filled, fillcolor=lightblue",
+                g.node_weight(node_ref.0).unwrap()
+            )
+        },
+    )
+    .to_string()
 }
 
 /// Writes the graph to a file in DOT format.
-pub fn to_dot_file(graph: &UnGraph<u32, String>, path: &str) {
+pub fn to_dot_file(graph: &UnGraph, path: &str) {
     let dot_str = to_dot_str(graph);
     std::fs::write(path, dot_str).expect("Rust shoudl write to file");
 }
