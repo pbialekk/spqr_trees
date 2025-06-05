@@ -1,0 +1,24 @@
+[package]
+name = "spqr_trees"
+version = "0.1.0"
+edition = "2024"
+description = "SPQR tree construction based on petgraph"
+
+[dependencies]
+fixedbitset = "0.5.7"
+hashbrown = "0.15.3"
+
+[dependencies.petgraph]
+version = "0.8.1"
+
+[lib]
+name = "spqr_trees"
+path = "src/lib.rs"
+test = true
+doctest = false
+bench = false
+doc = true
+proc-macro = false
+harness = true
+crate-type = ["lib"]
+
