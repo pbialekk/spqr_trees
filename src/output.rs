@@ -21,7 +21,7 @@ pub fn to_dot_str(graph: &UnGraph) -> String {
 /// Writes the graph to a file in DOT format.
 pub fn to_dot_file(graph: &UnGraph, path: &str) {
     let dot_str = to_dot_str(graph);
-    std::fs::write(path, dot_str).expect("Rust shoudl write to file");
+    std::fs::write(path, dot_str).expect("Rust should write to file");
 }
 
 /// Writes a string to a file.

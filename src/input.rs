@@ -1,6 +1,7 @@
 use crate::EdgeLabel;
 use crate::UnGraph;
-use hashbrown::{HashMap, HashSet};
+use hashbrown::HashMap;
+use std::collections::BTreeSet;
 use petgraph::graph::NodeIndex;
 use std::fs::File;
 use std::io::{BufRead, BufReader, Cursor};
@@ -13,20 +14,26 @@ pub fn from_file(path: &str) -> UnGraph {
     parse_graph_from_custom_format(reader)
 }
 
-/// /// Reads a graph from a string.
+/// Reads a graph from a string.
 ///
-/// Connected undirected graph input:
-/// - one line, one edge in format "u,v",
-/// - you can number vertices with non-negative integers,
+/// Undirected graph input:
+/// - One line = one edge in format "u,v".
+/// - You can number vertices with non-negative integers,
 /// numbers will be used only as labels in dot format,
-/// for nodes indentification you should see petgraph's `NodeIndex`,
-/// 
+/// for nodes identification you should see petgraph's `NodeIndex`.
+///
+/// Warning:
 /// <div class="warning">
 ///
-/// > Graph must be at least 1-connected.  
-/// > Multi-edges and self-loops are not yet supported.  
+/// - Graph does not have to be connected, but later you will get errors.
+/// - Parser will allow self-loops, but they will be ignored.
+/// - Parallel edges are supported.
 ///
 /// </div>
+/// 
+/// Note:
+/// 
+/// Node labels are related to internal node indices 0 = your smallest index and so on.
 ///
 /// Example input:
 /// ```text
@@ -45,6 +52,8 @@ pub fn from_file(path: &str) -> UnGraph {
 /// 7,5
 /// 9,2
 /// ```
+///
+/// TODO: add code example with svg of graph
 pub fn from_str(input: &str) -> UnGraph {
     let cursor = Cursor::new(input);
     let reader = BufReader::new(cursor);
@@ -53,7 +62,7 @@ pub fn from_str(input: &str) -> UnGraph {
 
 fn parse_graph_from_custom_format<R: BufRead>(reader: R) -> UnGraph {
     let mut edges = Vec::new();
-    let mut node_ids = HashSet::<u32>::new();
+    let mut node_ids = BTreeSet::<u32>::new();
     let mut ids_to_internal = HashMap::<u32, NodeIndex>::new();
 
     for line in reader.lines() {
@@ -62,16 +71,20 @@ fn parse_graph_from_custom_format<R: BufRead>(reader: R) -> UnGraph {
         if line.is_empty() {
             continue;
         }
-        let parts: Vec<_> = line.split(',').collect();
-        if parts.len() != 2 {
+        let pair: Vec<_> = line.split(',').collect();
+        if pair.len() != 2 {
             panic!("Wrong format, expected 'u,v' for an edge");
         }
-        let u: u32 = parts[0]
+        let u: u32 = pair[0]
             .parse()
             .expect("Node index should be a non-negative number");
-        let v: u32 = parts[1]
+        let v: u32 = pair[1]
             .parse()
             .expect("Node index should be a non-negative number");
+
+        if u == v {
+            continue;
+        }
 
         node_ids.insert(u);
         node_ids.insert(v);
@@ -101,10 +114,31 @@ mod tests {
     use super::*;
 
     #[test]
-    fn test_from_str() {
+    fn test_from_str_empty() {
+        let input = "";
+        let graph = from_str(input);
+        assert_eq!(graph.node_count(), 0);
+        assert_eq!(graph.edge_count(), 0);
+    }
+
+    #[test]
+    fn test_from_str_simple() {
         let input = "1,2\n2,3\n";
         let graph = from_str(input);
         assert_eq!(graph.node_count(), 3);
         assert_eq!(graph.edge_count(), 2);
+        // taking advantage of petgraph's impl, we know that internal ids are 1 smaller
+        assert!(graph.contains_edge(0.into(), 1.into()));
+        assert!(graph.contains_edge(1.into(), 2.into()));
+    }
+
+    #[test]
+    fn test_from_str_with_self_loops() {
+        let input = "1,2\n2,3\n3,3\n";
+        let graph = from_str(input);
+        assert_eq!(graph.node_count(), 3);
+        assert_eq!(graph.edge_count(), 2); // self-loop should be ignored
+        assert!(graph.contains_edge(0.into(), 1.into()));
+        assert!(graph.contains_edge(1.into(), 2.into()));
     }
 }

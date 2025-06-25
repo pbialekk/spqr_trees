@@ -6,6 +6,8 @@ use std::usize;
 
 /// Computes low points/palm tree of a graph.
 ///
+/// TODO: explain what low points are.
+///
 /// Graph should be undirected, connected and simple.
 ///
 /// See `mod parallel_edges`
@@ -37,6 +39,7 @@ pub fn draw_palm_tree(palm_tree: &PalmTree, g: &UnGraph) -> String {
         let low2 = palm_tree.rank_to_node[&palm_tree.low2[node_id]];
         let low1_label = g.node_weight(g.from_index(low1)).unwrap();
         let low2_label = g.node_weight(g.from_index(low2)).unwrap();
+        let dfs_time = palm_tree.rank[node_id];
 
         // Coloring: root is green, others are lightblue
         let color = if palm_tree.parent[node_id] == usize::MAX {
@@ -46,8 +49,8 @@ pub fn draw_palm_tree(palm_tree: &PalmTree, g: &UnGraph) -> String {
         };
 
         dot_str.push_str(&format!(
-            "  {} [label=\"ID:{} LOWS: {}|{}\", style=filled, fillcolor={}];\n",
-            node_id, node_label, low1_label, low2_label, color
+            "  {} [label=\"ID:{} LOWS: {}|{}\nRANK: {}\", style=filled, fillcolor={}];\n",
+            node_id, node_label, low1_label, low2_label, dfs_time, color
         ));
     }
 
@@ -113,6 +116,7 @@ impl std::fmt::Display for DFSEdgeLabel {
 /// This struct holds all information about the palm tree of the graph.
 #[derive(Debug)]
 pub struct PalmTree {
+    // usize is there to keep petgraph's convention
     visited: FixedBitSet,
     low1: Vec<usize>,
     low2: Vec<usize>,
@@ -189,56 +193,3 @@ fn _dfs(g: &UnGraph, current_node: usize, _: usize, palm_tree: &mut PalmTree) {
         }
     }
 }
-
-// /// Enum to represent state in recursion.
-// enum RecursionStep {
-//     BaseStep(usize),
-//     UpdateLowsAndDesc(usize, usize),
-// }
-
-// /// Helper that performs the required DFS in an iterative manner.
-// /// TODO: Incomplete for now
-// fn _dfs_iterative(g: &UnGraph<u32, String>, target_node: usize, palm_tree: &mut PalmTree) {
-//     let mut stack: Vec<RecursionStep> = vec![RecursionStep::BaseStep(target_node)];
-
-//     while let Some(recursion_step) = stack.pop() {
-//         match recursion_step {
-//             RecursionStep::BaseStep(current_node) => {
-//                 palm_tree.time += 1;
-//                 palm_tree.rank[current_node] = palm_tree.time;
-//                 palm_tree.visited.insert(current_node);
-//                 palm_tree.low1[current_node] = palm_tree.rank[current_node];
-//                 palm_tree.low2[current_node] = palm_tree.rank[current_node];
-//                 palm_tree.descendants[current_node] = 1;
-
-//                 for edge in g.edges(g.from_index(current_node)) {
-//                     let child_node = g.to_index(edge.target());
-//                     if !palm_tree.visited.contains(child_node) {
-//                         let edge_index = edge.id().index();
-//                         palm_tree.edge_labels[edge_index] = EdgeLabel::Tree;
-//                         palm_tree.parent[child_node] = current_node;
-//                         stack.push(RecursionStep::UpdateLowsAndDesc(current_node, child_node));
-//                         stack.push(RecursionStep::BaseStep(child_node));
-//                     } else {
-//                         let edge_index = edge.id().index();
-//                         palm_tree.edge_labels[edge_index] = EdgeLabel::Back;
-//                     }
-//                 }
-//             }
-//             RecursionStep::UpdateLowsAndDesc(current_node, child_node) => {
-//                 if palm_tree.low1[child_node] < palm_tree.low1[current_node] {
-//                     palm_tree.low2[current_node] =
-//                         std::cmp::min(palm_tree.low1[current_node], palm_tree.low2[child_node]);
-//                     palm_tree.low2[current_node] = palm_tree.low1[child_node];
-//                 } else if palm_tree.low1[child_node] == palm_tree.low1[current_node] {
-//                     palm_tree.low2[current_node] =
-//                         std::cmp::min(palm_tree.low2[current_node], palm_tree.low2[child_node]);
-//                 } else {
-//                     palm_tree.low2[current_node] =
-//                         std::cmp::min(palm_tree.low2[current_node], palm_tree.low1[child_node]);
-//                 }
-//                 palm_tree.descendants[current_node] += palm_tree.descendants[child_node];
-//             }
-//         }
-//     }
-// }
