@@ -2,9 +2,12 @@ use petgraph::visit::{IntoNodeReferences, NodeIndexable};
 
 use crate::{EdgeLabel, UnGraph};
 
+/// Represents the block-cut tree of a graph, containing blocks, cut vertices, and their relationships.
 #[derive(Debug, Clone)]
 pub struct BlockCutTree {
+    /// Number of blocks in the graph.
     pub block_count: usize,
+    /// Number of cut vertices in the graph.
     pub cut_count: usize,
     /// Blocks of the graph.
     pub blocks: Vec<UnGraph>,
@@ -23,7 +26,6 @@ impl BlockCutTree {}
 /// Each block is a set of vertices that are biconnected.
 pub fn get_block_cut_tree(graph: &UnGraph) -> BlockCutTree {
     let graph_size = graph.node_references().size_hint().0;
-    let edges_size = graph.edge_references().size_hint().0;
 
     let mut time = 0;
     let mut preorder = vec![usize::MAX; graph_size];
@@ -99,7 +101,6 @@ pub fn get_block_cut_tree(graph: &UnGraph) -> BlockCutTree {
         }
     }
 
-    dbg!(&blocks);
     let mut block_cut_tree = BlockCutTree {
         block_count: blocks.len(),
         cut_count: 0,
@@ -110,7 +111,7 @@ pub fn get_block_cut_tree(graph: &UnGraph) -> BlockCutTree {
     for (i, block) in blocks.iter().enumerate() {
         let mut block_graph = UnGraph::new_undirected();
         for &u in block {
-            block_graph.add_node(u.try_into().unwrap());
+            block_graph.add_node(u.try_into().unwrap()).index();
             block_cut_tree.node_to_id[u] = i;
         }
         block_cut_tree.graph.add_node(i.try_into().unwrap());
@@ -118,46 +119,55 @@ pub fn get_block_cut_tree(graph: &UnGraph) -> BlockCutTree {
     }
     for u in graph.node_indices().map(|n| n.index()) {
         if is_cut[u] {
-            block_cut_tree.node_to_id[u] = block_cut_tree.block_count + block_cut_tree.cut_count;
-            block_cut_tree.cut_count += 1;
-            block_cut_tree
+            block_cut_tree.node_to_id[u] = block_cut_tree
                 .graph
-                .add_node(block_cut_tree.node_to_id[u].try_into().unwrap());
+                .add_node(block_cut_tree.node_to_id[u].try_into().unwrap())
+                .index();
+            block_cut_tree.cut_count += 1;
         }
     }
 
-    // edges between blocks and cut vertices
+    // graph edges
     for (i, block) in blocks.iter().enumerate() {
         for &u in block {
             if is_cut[u] {
+                // edge from block to cut vertex
                 block_cut_tree.graph.add_edge(
-                    block_cut_tree.graph.from_index(i),
+                    block_cut_tree.graph.from_index(i.try_into().unwrap()),
                     block_cut_tree
                         .graph
                         .from_index(block_cut_tree.node_to_id[u]),
-                    EdgeLabel::Real,
+                    EdgeLabel::Virtual,
                 );
             }
         }
     }
 
-    // edges inside blocks
+    // block edges
+    let mut inside_block = vec![false; graph_size];
+    let mut inside_block_id = vec![0; graph_size];
     for (i, block) in blocks.iter().enumerate() {
-        let block_graph = &mut block_cut_tree.blocks[i];
-        for (uid, u) in block.iter().enumerate() {
-            // TODO: make it faster
-            for v in graph.neighbors(graph.from_index(*u)).map(|n| n.index()) {
-                if block.contains(&v) {
-                    let vid = block.iter().position(|&x| x == v).unwrap();
-                    if uid < vid {
-                        block_graph.add_edge(
-                            block_graph.from_index(uid),
-                            block_graph.from_index(vid),
-                            EdgeLabel::Real,
-                        );
-                    }
+        for (i, &u) in block.iter().enumerate() {
+            inside_block[u] = true;
+            inside_block_id[u] = i;
+        }
+        // borrow checker...
+        let mut edges_to_add = Vec::new();
+        for &u in block {
+            for v in graph.neighbors(graph.from_index(u)).map(|n| n.index()) {
+                if inside_block[v] && u < v {
+                    // edge inside the block
+                    let u_idx = block_cut_tree.blocks[i].from_index(inside_block_id[u]);
+                    let v_idx = block_cut_tree.blocks[i].from_index(inside_block_id[v]);
+                    edges_to_add.push((u_idx, v_idx));
                 }
             }
+        }
+        for (u_idx, v_idx) in edges_to_add {
+            block_cut_tree.blocks[i].add_edge(u_idx, v_idx, EdgeLabel::Real);
+        }
+        for &u in block {
+            inside_block[u] = false;
         }
     }
 
