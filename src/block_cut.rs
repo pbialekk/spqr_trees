@@ -89,10 +89,6 @@ pub fn get_block_cut_tree(graph: &UnGraph) -> BlockCutTree {
                 &mut blocks,
                 &mut is_cut,
             );
-            if !vertex_stack.is_empty() {
-                blocks.push(vertex_stack.clone());
-                vertex_stack.clear();
-            }
         }
     }
 
