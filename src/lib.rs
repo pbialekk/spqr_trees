@@ -14,6 +14,7 @@ pub mod input;
 pub mod output;
 pub mod palm_tree;
 pub mod parallel_edges;
+pub mod tsin;
 pub mod types;
 
 pub use types::EdgeLabel;
