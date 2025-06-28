@@ -1,62 +1,67 @@
-use crate::EdgeLabel;
-use crate::UnGraph;
+use crate::{EdgeLabel, UnGraph};
+use embed_doc_image::embed_doc_image;
 use hashbrown::HashMap;
-use std::collections::BTreeSet;
 use petgraph::graph::NodeIndex;
+use std::collections::BTreeSet;
 use std::fs::File;
 use std::io::{BufRead, BufReader, Cursor};
 
+/// Reads a graph from a string using our simplified format.
+///
+/// # Undirected graph input:
+/// - One line = one edge in format "u,v".
+/// - You can label vertices with non-negative integers,
+/// these labels will be visible in DOT format.
+/// For internal nodes identification you should see petgraph's `NodeIndex` and `examples/input`
+///
+/// Note:
+///
+/// Your node labels are related to internal node indices: NodeIndex(0) = your smallest label and so on.
+///
+/// # Warning:
+/// <div class="warning">
+///
+/// - Graph does not have to be connected, but later you will get errors.
+/// - Parser will allow self-loops, but they will be ignored.
+/// - Parallel edges are fully supported.
+///
+/// </div>
+///
+/// # Example input:
+/// ```text
+/// 1,2
+/// 1,3
+/// 1,4
+/// 2,3
+/// 2,4
+/// 3,4
+/// ```
+///
+/// This graph looks like this:
+///
+/// ![Wheel on 4 nodes][wheel4]
+///
+/// # Another code example:
+/// ```rust
+/// use your_crate::input::from_str;
+///
+/// let input = "1,2\n2,3\n";
+/// let graph = from_str(input);
+/// assert_eq!(graph.node_count(), 3);
+/// assert_eq!(graph.edge_count(), 2);
+/// ```
+#[embed_doc_image("wheel4", "assets/wheel4.svg")]
+
+pub fn from_str(input: &str) -> UnGraph {
+    let cursor = Cursor::new(input);
+    let reader = BufReader::new(cursor);
+    parse_graph_from_custom_format(reader)
+}
 
 /// This is equivalent to [`from_str`], but takes file path as an input.
 pub fn from_file(path: &str) -> UnGraph {
     let file = File::open(path).expect("File should exist and be readable");
     let reader = BufReader::new(file);
-    parse_graph_from_custom_format(reader)
-}
-
-/// Reads a graph from a string.
-///
-/// Undirected graph input:
-/// - One line = one edge in format "u,v".
-/// - You can number vertices with non-negative integers,
-/// numbers will be used only as labels in dot format,
-/// for nodes identification you should see petgraph's `NodeIndex`.
-///
-/// Warning:
-/// <div class="warning">
-///
-/// - Graph does not have to be connected, but later you will get errors.
-/// - Parser will allow self-loops, but they will be ignored.
-/// - Parallel edges are supported.
-///
-/// </div>
-/// 
-/// Note:
-/// 
-/// Node labels are related to internal node indices 0 = your smallest index and so on.
-///
-/// Example input:
-/// ```text
-/// 1,2
-/// 3,4
-/// 3,4
-/// 3,5
-/// 5,6
-/// 6,7
-/// 5,8
-/// 8,9
-/// 3,1
-/// 4,1
-/// 5,2
-/// 7,3
-/// 7,5
-/// 9,2
-/// ```
-///
-/// TODO: add code example with svg of graph
-pub fn from_str(input: &str) -> UnGraph {
-    let cursor = Cursor::new(input);
-    let reader = BufReader::new(cursor);
     parse_graph_from_custom_format(reader)
 }
 
@@ -98,7 +103,6 @@ fn parse_graph_from_custom_format<R: BufRead>(reader: R) -> UnGraph {
         let internal_id = graph.add_node(id);
         ids_to_internal.insert(id, internal_id);
     }
-
 
     graph.extend_with_edges(
         edges

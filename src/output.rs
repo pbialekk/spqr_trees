@@ -2,8 +2,14 @@ use crate::UnGraph;
 use petgraph::dot::{Config, Dot};
 
 /// Wrapper for petgraph::dot::Dot.
-/// It shows your nodes ids, not petgraph's internal indices.
+///
+/// It shows your nodes labels, not petgraph's internal indices.
+///
+/// It adds colors also.
+///
+/// Real edges are solid and virtual edges are dashed.
 pub fn to_dot_str(graph: &UnGraph) -> String {
+// TODO: add case when we have virtual edges
     Dot::with_attr_getters(
         graph,
         &[Config::EdgeNoLabel, Config::NodeNoLabel],
@@ -21,7 +27,7 @@ pub fn to_dot_str(graph: &UnGraph) -> String {
 /// Writes the graph to a file in DOT format.
 pub fn to_dot_file(graph: &UnGraph, path: &str) {
     let dot_str = to_dot_str(graph);
-    std::fs::write(path, dot_str).expect("Rust should write to file");
+    to_file(&dot_str, path);
 }
 
 /// Writes a string to a file.

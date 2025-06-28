@@ -14,6 +14,5 @@ impl std::fmt::Display for EdgeLabel {
     }
 }
 
-
 /// Wrapper for petgraph's graph type.
 pub type UnGraph = petgraph::graph::UnGraph<u32, EdgeLabel>;

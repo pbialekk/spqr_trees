@@ -1,4 +1,4 @@
-#![warn(missing_docs)]
+// #![warn(missing_docs)]
 
 //! # spqr_trees
 //!
@@ -8,6 +8,8 @@
 //! Based on [`petgraph`](https://docs.rs/petgraph).
 //!
 //! TODO: add examples of usage later
+//!
+//! TODO: include papers
 
 pub mod block_cut;
 pub mod input;
