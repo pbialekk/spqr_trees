@@ -9,6 +9,7 @@ fn dfs(
     preorder: &mut [usize],
     split_pairs: &mut Vec<(usize, usize)>,
     subsz: &mut Vec<usize>,
+    jump: &mut [usize],
 ) -> (usize, usize, Vec<(usize, usize, bool, usize, usize)>) {
     *time += 1;
     preorder[u] = *time;
@@ -33,8 +34,16 @@ fn dfs(
             continue;
         }
         if preorder[v] == usize::MAX {
-            let (v_low, v_lowv, mut v_stack) =
-                dfs(graph, v, time, Some(eid), preorder, split_pairs, subsz);
+            let (v_low, v_lowv, mut v_stack) = dfs(
+                graph,
+                v,
+                time,
+                Some(eid),
+                preorder,
+                split_pairs,
+                subsz,
+                jump,
+            );
             tree_edges.push(eid);
 
             subsz[u] += subsz[v];
@@ -48,6 +57,7 @@ fn dfs(
                 if v_stack.last().unwrap().4 == v {
                     v_stack.pop();
                     split_pairs.push((i, eid));
+                    jump[y] = u; // for testing purposes
                     if p != u {
                         v_stack.push((i, y, b, p, u));
                     }
@@ -132,12 +142,13 @@ fn dfs(
 }
 
 /// Based on https://www.sciencedirect.com/science/article/pii/S1570866708000415
-pub fn get_split_pairs(graph: &UnGraph) -> Vec<(usize, usize)> {
+pub fn get_split_pairs(graph: &UnGraph) -> (Vec<(usize, usize)>, Vec<usize>) {
     let graph_size = graph.node_references().size_hint().0;
     let mut split_pairs = Vec::new();
     let mut time = 0;
     let mut preorder = vec![usize::MAX; graph_size];
     let mut subsz = vec![1; graph_size];
+    let mut jump = vec![usize::MAX; graph_size];
 
     for u in graph.node_references().map(|(n, _)| n.index()) {
         if preorder[u] == usize::MAX {
@@ -149,9 +160,15 @@ pub fn get_split_pairs(graph: &UnGraph) -> Vec<(usize, usize)> {
                 &mut preorder,
                 &mut split_pairs,
                 &mut subsz,
+                &mut jump,
             );
         }
     }
 
-    split_pairs
+    (split_pairs, jump)
+}
+
+#[cfg(test)]
+mod tests {
+    // https://judge.yosupo.jp/submission/296156
 }
