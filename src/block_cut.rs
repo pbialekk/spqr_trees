@@ -40,13 +40,18 @@ fn dfs(
     let mut is_potential_cut = parent.is_some();
     vertex_stack.push(u);
 
+    let mut parent_v = usize::MAX;
+
     // process all neighbors of u to get true lowpoint of u
-    for v in graph.neighbors(graph.from_index(u)).map(|n| n.index()) {
+    for (v, eid) in graph
+        .edges_directed(graph.from_index(u), petgraph::Direction::Outgoing)
+        .map(|e| (e.target().index(), e.id().index()))
+    {
         if preorder[v] == usize::MAX {
             let low_v = dfs(
                 graph,
                 v,
-                Some(u),
+                Some(eid),
                 time,
                 preorder,
                 vertex_stack,
@@ -60,13 +65,16 @@ fn dfs(
             }
             // if in root this will handle >2 dfs tree children case
             is_potential_cut = true;
-        } else if Some(v) != parent {
+        } else if Some(eid) != parent {
             // back edge
             low = low.min(preorder[v]);
+        } else {
+            // this is parent edge, we need to remember it
+            parent_v = v;
         }
     }
 
-    if parent.is_some() && low >= preorder[parent.unwrap()] {
+    if parent.is_some() && low >= preorder[parent_v] {
         // parent is cut vertex, unless it is a root
         let mut block = Vec::new();
         while let Some(w) = vertex_stack.pop() {
