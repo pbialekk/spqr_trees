@@ -22,7 +22,7 @@ pub struct BlockCutTree {
 
 impl BlockCutTree {}
 
-/// Returns the lowest preorder reachable from subtree of u [lowpoint].
+/// Returns the lowest preorder vertex reachable from subtree of u [lowpoint].
 fn dfs(
     graph: &UnGraph,
     u: usize,
@@ -31,12 +31,13 @@ fn dfs(
     preorder: &mut [usize],
     vertex_stack: &mut Vec<usize>,
     // block is defined by set of edges, this way we avoid problem with cut vertices multi membership
-    blocks: &mut Vec<Vec<(usize, usize)>>,
+    blocks: &mut Vec<Vec<usize>>,
     is_cut: &mut [bool],
 ) -> usize {
     preorder[u] = *time;
     *time += 1;
     let mut low = preorder[u];
+    let mut is_potential_cut = parent.is_some();
     vertex_stack.push(u);
 
     // process all neighbors of u to get true lowpoint of u
@@ -54,37 +55,33 @@ fn dfs(
             );
             // maybe some descendant of v has lower lowpoint
             low = low.min(low_v);
+            if low_v >= preorder[u] && is_potential_cut {
+                is_cut[u] = true;
+            }
+            // if in root this will handle >2 dfs tree children case
+            is_potential_cut = true;
         } else if Some(v) != parent {
             // back edge
             low = low.min(preorder[v]);
         }
     }
 
-
-
     if parent.is_some() && low >= preorder[parent.unwrap()] {
-        // parent is cut vertex, unless it is root
-        // TODO: it does not work, maybe just add 2 ifs above
-        is_cut[u] = if parent.unwrap() == 0 {
-            // root is cut vertex if it has more than one child
-            graph.neighbors(graph.from_index(u)).count() > 1
-        } else {
-            true
-        };
+        // parent is cut vertex, unless it is a root
         let mut block = Vec::new();
         while let Some(w) = vertex_stack.pop() {
             // this looks scare, but in reality we just push all edges to block and avoid duplicates
-            // by predicate :)
-            let edges: Vec<(usize, usize)> = graph.edges(NodeIndex::new(w))
-                .map(|e| (e.source().index(), e.target().index()))
-                .filter(|(w, v)| preorder[*w] > preorder[*v])
+            // by predicate `preorder[*w] > preorder[*v]` :)
+            let edges: Vec<usize> = graph
+                .edges(NodeIndex::new(w))
+                .filter(|e| preorder[e.source().index()] > preorder[e.target().index()])
+                .map(|e| e.id().index())
                 .collect();
             block.extend(edges);
             if w == u {
                 break;
             }
         }
-
         blocks.push(block);
     }
 
@@ -195,25 +192,54 @@ mod dfs_tests {
     use super::*;
     use crate::types::UnGraph;
 
+    fn run_dfs(g: &UnGraph, start: usize) -> (Vec<bool>, Vec<Vec<usize>>, Vec<usize>) {
+        let mut time = 0;
+        let mut preorder = vec![usize::MAX; g.node_count()];
+        let mut vertex_stack = Vec::new();
+        let mut blocks = Vec::new();
+        let mut is_cut = vec![false; g.node_count()];
+        dfs(
+            g,
+            start,
+            None,
+            &mut time,
+            &mut preorder,
+            &mut vertex_stack,
+            &mut blocks,
+            &mut is_cut,
+        );
+        (is_cut, blocks, preorder)
+    }
+
+    fn assert_dfs(
+        g: &UnGraph,
+        start: usize,
+        expected_is_cut: &[bool],
+        expected_blocks: &[Vec<usize>],
+    ) {
+        let (is_cut, mut blocks, _) = run_dfs(g, start);
+        for block in &mut blocks {
+            block.sort();
+        }
+
+        // brr borrow checker...
+        let mut expected_blocks_sorted = expected_blocks.to_vec();
+        for block in &mut expected_blocks_sorted {
+            block.sort();
+        }
+        blocks.sort();
+        expected_blocks_sorted.sort();
+        assert_eq!(is_cut, expected_is_cut);
+        assert_eq!(blocks, expected_blocks_sorted);
+    }
+
     #[test]
     fn test_dfs_single_edge() {
         let mut g = UnGraph::new_undirected();
         let a = g.add_node(0);
         let b = g.add_node(1);
         g.add_edge(a, b, EdgeLabel::Real);
-
-        let mut time = 0;
-        let mut preorder = vec![usize::MAX; 2];
-        let mut vertex_stack = Vec::new();
-        let mut blocks = Vec::new();
-        let mut is_cut = vec![false; 2];
-
-        dfs(&g, 0, None, &mut time, &mut preorder, &mut vertex_stack, &mut blocks, &mut is_cut);
-
-        assert_eq!(is_cut, vec![false, false]);
-        // I take advantage of internal indices of petgraph
-        assert_eq!(blocks, vec![vec![(1, 0)]]);
-
+        assert_dfs(&g, 0, &[false, false], &[vec![0]]);
     }
 
     #[test]
@@ -225,17 +251,7 @@ mod dfs_tests {
         g.add_edge(a, b, EdgeLabel::Real);
         g.add_edge(b, c, EdgeLabel::Real);
         g.add_edge(c, a, EdgeLabel::Real);
-
-        let mut time = 0;
-        let mut preorder = vec![usize::MAX; 3];
-        let mut vertex_stack = Vec::new();
-        let mut blocks = Vec::new();
-        let mut is_cut = vec![false; 3];
-
-        dfs(&g, 0, None, &mut time, &mut preorder, &mut vertex_stack, &mut blocks, &mut is_cut);
-
-        assert_eq!(is_cut, vec![false, false, false]);
-        assert_eq!(blocks, vec![vec![(2, 1), (2, 0), (1, 0)]]);
+        assert_dfs(&g, 0, &[false, false, false], &[vec![0, 1, 2]]);
     }
 
     #[test]
@@ -247,18 +263,7 @@ mod dfs_tests {
         g.add_edge(a, b, EdgeLabel::Real);
         g.add_edge(b, c, EdgeLabel::Real);
 
-        let mut time = 0;
-        let mut preorder = vec![usize::MAX; 3];
-        let mut vertex_stack = Vec::new();
-        let mut blocks = Vec::new();
-        let mut is_cut = vec![false; 3];
-
-        dfs(&g, 0, None, &mut time, &mut preorder, &mut vertex_stack, &mut blocks, &mut is_cut);
-
-        assert_eq!(is_cut, vec![false, true, false]);
-        println!("{:?}", vertex_stack);
-        println!("{:?}", blocks);
-        assert_eq!(blocks.len(), 2);
+        assert_dfs(&g, 0, &[false, true, false], &[vec![0], vec![1]]);
     }
 
     #[test]
@@ -270,15 +275,35 @@ mod dfs_tests {
         g.add_edge(a, b, EdgeLabel::Real);
         g.add_edge(a, c, EdgeLabel::Real);
 
-        let mut time = 0;
-        let mut preorder = vec![usize::MAX; 3];
-        let mut vertex_stack = Vec::new();
-        let mut blocks = Vec::new();
-        let mut is_cut = vec![false; 3];
+        assert_dfs(&g, 0, &[true, false, false], &[vec![0], vec![1]]);
+    }
 
-        dfs(&g, 0, None, &mut time, &mut preorder, &mut vertex_stack, &mut blocks, &mut is_cut);
+    #[test]
+    fn test_dfs_complex_graph() {
+        let mut g = UnGraph::new_undirected();
+        let a = g.add_node(0);
+        let b = g.add_node(1);
+        let c = g.add_node(2);
+        let d = g.add_node(3);
+        let e = g.add_node(4);
+        let f = g.add_node(5);
+        g.add_edge(a, b, EdgeLabel::Real);
+        g.add_edge(b, c, EdgeLabel::Real);
+        g.add_edge(c, a, EdgeLabel::Real);
+        g.add_edge(d, e, EdgeLabel::Real);
+        g.add_edge(e, f, EdgeLabel::Real);
+        g.add_edge(f, d, EdgeLabel::Real);
+        g.add_edge(a, d, EdgeLabel::Real);
+        // 1----\        /---- 5
+        // |     0 ---- 4      |
+        // 2----/        \---- 6
 
-        assert_eq!(is_cut, vec![true, false, false]);
+        assert_dfs(
+            &g,
+            0,
+            &[true, false, false, true, false, false],
+            &[vec![0, 1, 2], vec![3, 4, 5], vec![6]],
+        );
     }
 }
 // #[cfg(test)]

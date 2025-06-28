@@ -3,6 +3,7 @@
 pub enum EdgeLabel {
     Real,
     Virtual,
+    // TODO: add label for BC tree edges or generally helper structures
 }
 
 impl std::fmt::Display for EdgeLabel {

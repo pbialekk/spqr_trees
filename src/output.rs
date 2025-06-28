@@ -9,7 +9,7 @@ use petgraph::dot::{Config, Dot};
 ///
 /// Real edges are solid and virtual edges are dashed.
 pub fn to_dot_str(graph: &UnGraph) -> String {
-// TODO: add case when we have virtual edges
+    // TODO: add case when we have virtual edges
     Dot::with_attr_getters(
         graph,
         &[Config::EdgeNoLabel, Config::NodeNoLabel],
