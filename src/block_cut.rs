@@ -35,7 +35,7 @@ impl BlockCutTree {}
 /// # Warning
 /// <div class="warning">
 ///
-/// - Graph must be connected, otherwise you will get wrong only first BC tree not the forest.
+/// - Graph must be connected, otherwise you will get only first BC tree not the forest.
 ///
 /// </div>
 fn dfs(
@@ -92,6 +92,7 @@ fn dfs(
 
             }
         } else if preorder[v] < preorder[u] && !visited_edges.contains(e.id().index()) {
+            // may be parallel edge or back edge
             edge_stack.push(e.id().index());
             visited_edges.set(e.id().index(), true);
             low = low.min(preorder[v]);
@@ -114,9 +115,27 @@ fn dfs(
 /// <div class="warning">
 ///
 /// - We consider graph with one vertex and no edges as 1 biconnected component.
-/// - Graph must be connected, otherwise you will get wrong only first BC tree not the forest.
+/// - Graph must be connected, otherwise you will get  only first BC tree not the forest.
 ///
 /// </div>
+///
+/// # Basic idea behind algorithm
+/// With DFS we can identify articulations (cut vertices).
+/// We do this by checking if the lowpoint of a child is greater than or equal to the preorder of the parent.
+/// Then we take advantage of DFS traversal to find biconnected components.
+/// We keep stack of visited edges and when we find a cut vertex or a root, we simply pop edges from the stack.
+/// These steps are done in the `dfs` function above in source code.
+/// In `get_block_cut_tree` we collect the blocks and cut vertices into a `BlockCutTree` structure.
+///
+/// # Warning
+/// <div class="warning">
+///
+/// - Internal indices of nodes may not remain the same, because we create new subgraphs. But labels of nodes are preserved.
+///
+/// </div>
+///
+/// # Example
+/// TODO:
 pub fn get_block_cut_tree(graph: &UnGraph) -> BlockCutTree {
     let graph_size = graph.node_count();
     let mut time = 0;
@@ -127,7 +146,18 @@ pub fn get_block_cut_tree(graph: &UnGraph) -> BlockCutTree {
     let mut blocks = Vec::new();
 
     if graph_size == 1 && graph.edge_count() == 0 {
-        // TODO: hardcode BC Tree
+        let mut block_cut_tree = BlockCutTree {
+            block_count: 1,
+            cut_count: 0,
+            blocks: vec![UnGraph::new_undirected()],
+            graph: UnGraph::new_undirected(),
+            node_to_id: vec![0],
+        };
+
+        block_cut_tree.blocks[0].add_node(graph.node_weight(NodeIndex::new(0)).unwrap().clone());
+        block_cut_tree.graph.add_node(0);
+
+        return block_cut_tree;
     }
 
     dfs(
@@ -142,6 +172,12 @@ pub fn get_block_cut_tree(graph: &UnGraph) -> BlockCutTree {
         &mut is_cut,
     );
 
+    // Sets of vertices in each block
+    let mut blocks_vertices_sets: Vec<HashSet<usize>> = vec![HashSet::new(); blocks.len()];
+
+    // Map from current internal indices to new biconnected component internal indices
+    let mut bicon_internal_indices: Vec<usize> = vec![0; graph_size];
+
     let mut block_cut_tree = BlockCutTree {
         block_count: blocks.len(),
         cut_count: 0,
@@ -154,27 +190,39 @@ pub fn get_block_cut_tree(graph: &UnGraph) -> BlockCutTree {
     for (i, block) in blocks.iter().enumerate() {
         let mut block_graph = UnGraph::new_undirected();
 
-        // Create a set of vertices indices
-        let mut block_vertex_set = HashSet::new();
-        for &u in block {
+        for &edge_idx in block {
             let (v, w) = graph
-                .edge_endpoints(EdgeIndex::new(u))
+                .edge_endpoints(EdgeIndex::new(edge_idx))
                 .expect("Edge endpoints should exist");
             let v_idx = v.index();
             let w_idx = w.index();
-            block_vertex_set.extend([v_idx, w_idx]);
+            blocks_vertices_sets[i].extend([v_idx, w_idx]);
         }
 
-        // Sort them with linear sort to maintain labels & indices relation
-        let mut block_vertices: Vec<usize> = block_vertex_set.into_iter().collect();
+        // Sort them with linear sort to maintain labels and internal indices relation
+        let mut block_vertices: Vec<usize> = blocks_vertices_sets[i].iter().copied().collect();
         radsort::sort(&mut block_vertices);
 
         // And just insert labels to the block graph
         for u in block_vertices {
             let label = graph.node_weight(NodeIndex::new(u)).unwrap().clone();
-            block_graph.add_node(label);
+            bicon_internal_indices[u] = block_graph.add_node(label).index();
             block_cut_tree.node_to_id[u] = i;
         }
+
+        // Add edges inside blocks
+        for &edge_idx in block {
+            let (v, w) = graph
+                .edge_endpoints(EdgeIndex::new(edge_idx))
+                .expect("Edge endpoints should exist");
+            let v_idx = v.index();
+            let w_idx = w.index();
+            block_graph.add_edge(
+                NodeIndex::new(bicon_internal_indices[v_idx]),
+                NodeIndex::new(bicon_internal_indices[w_idx]),
+                EdgeLabel::Real);
+        }
+
         block_cut_tree.graph.add_node(i.try_into().unwrap());
         block_cut_tree.blocks.push(block_graph);
     }
@@ -191,9 +239,8 @@ pub fn get_block_cut_tree(graph: &UnGraph) -> BlockCutTree {
     }
 
     // Add edges between blocks and cut vertices
-    // TODO: block is list of edges not vertices
-    for (i, block) in blocks.iter().enumerate() {
-        for &u in block {
+    for (i, vertex_set) in blocks_vertices_sets.iter().enumerate() {
+        for &u in vertex_set {
             if is_cut[u] {
                 block_cut_tree.graph.add_edge(
                     block_cut_tree.graph.from_index(i),
@@ -206,34 +253,51 @@ pub fn get_block_cut_tree(graph: &UnGraph) -> BlockCutTree {
         }
     }
 
-    // Add edges inside blocks
-    // TODO: left there
-    let mut inside_block = vec![false; graph_size];
-    let mut inside_block_id = vec![0; graph_size];
-    for (i, block) in blocks.iter().enumerate() {
-        for (j, &u) in block.iter().enumerate() {
-            inside_block[u] = true;
-            inside_block_id[u] = j;
-        }
-        let mut edges_to_add = Vec::new();
-        for &u in block {
-            for v in graph.neighbors(graph.from_index(u)).map(|n| n.index()) {
-                if inside_block[v] && u < v {
-                    let u_idx = block_cut_tree.blocks[i].from_index(inside_block_id[u]);
-                    let v_idx = block_cut_tree.blocks[i].from_index(inside_block_id[v]);
-                    edges_to_add.push((u_idx, v_idx));
-                }
-            }
-        }
-        for (u_idx, v_idx) in edges_to_add {
-            block_cut_tree.blocks[i].add_edge(u_idx, v_idx, EdgeLabel::Real);
-        }
-        for &u in block {
-            inside_block[u] = false;
-        }
+    block_cut_tree
+}
+
+/// Output a skeleton of the block-cut tree in DOT format.
+/// Biconnected components (blocks) are represented as green nodes labeled B_i.
+/// Cut vertices are represented as red nodes (C_j) along with their real labels.
+pub fn draw_skeleton_of_block_cut_tree_dot(bct: &BlockCutTree) -> String {
+    let mut output = String::from("graph {\n");
+
+    // Add block nodes (green, label B_i)
+    for i in 0..bct.block_count {
+        output.push_str(&format!(
+            "  block{} [label=\"B_{}\", style=filled, fillcolor=green, fontcolor=white, shape=ellipse];\n",
+            i, i
+        ));
     }
 
-    block_cut_tree
+    // Add cut vertex nodes (red, real labels)
+    for i in 0..bct.cut_count {
+        let idx = bct.block_count + i;
+        let label = bct.graph.node_weight(NodeIndex::new(idx)).unwrap();
+        output.push_str(&format!(
+            "  cut{} [label=\"C_{} ({})\", style=filled, fillcolor=red, fontcolor=white, shape=ellipse];\n",
+            idx, i, label
+        ));
+    }
+
+    // Add edges between blocks and cut vertices
+    for edge in bct.graph.edge_references() {
+        let (a, b) = (edge.source().index(), edge.target().index());
+        let a_str = if a < bct.block_count {
+            format!("block{}", a)
+        } else {
+            format!("cut{}", a)
+        };
+        let b_str = if b < bct.block_count {
+            format!("block{}", b)
+        } else {
+            format!("cut{}", b)
+        };
+        output.push_str(&format!("  {} -- {};\n", a_str, b_str));
+    }
+
+    output.push_str("}\n");
+    output
 }
 #[cfg(test)]
 mod dfs_tests {
@@ -280,6 +344,9 @@ mod dfs_tests {
         assert_eq!(is_cut, expected_is_cut);
         assert_eq!(blocks, expected_blocks);
     }
+
+    // In addition,
+    // https://judge.yosupo.jp/submission/296498
 
     #[test]
     fn test_dfs_single_edge() {
@@ -377,67 +444,64 @@ mod dfs_tests {
     }
 }
 
-// #[cfg(test)]
-// mod bc_tests {
-//     use super::*;
-//     use petgraph::graph::UnGraph;
-//
-//     #[test]
-//     fn test_bc_single_edge() {
-//         let mut g = UnGraph::new_undirected();
-//         let a = g.add_node(0);
-//         let b = g.add_node(1);
-//         g.add_edge(a, b, EdgeLabel::Real);
-//
-//         let bct = get_block_cut_tree(&g);
-//         assert_eq!(bct.block_count, 1);
-//         assert_eq!(bct.cut_count, 0);
-//         assert_eq!(bct.blocks.len(), 1);
-//     }
-//
-//     #[test]
-//     fn test_bc_triangle() {
-//         let mut g = UnGraph::new_undirected();
-//         let a = g.add_node(0);
-//         let b = g.add_node(1);
-//         let c = g.add_node(2);
-//         g.add_edge(a, b, EdgeLabel::Real);
-//         g.add_edge(b, c, EdgeLabel::Real);
-//         g.add_edge(c, a, EdgeLabel::Real);
-//
-//         let bct = get_block_cut_tree(&g);
-//         assert_eq!(bct.block_count, 1);
-//         assert_eq!(bct.cut_count, 0);
-//         assert_eq!(bct.blocks.len(), 1);
-//     }
-//
-//     #[test]
-//     fn test_bc_cut_vertex() {
-//         let mut g = UnGraph::new_undirected();
-//         let a = g.add_node(0);
-//         let b = g.add_node(1);
-//         let c = g.add_node(2);
-//         g.add_edge(a, b, EdgeLabel::Real);
-//         g.add_edge(b, c, EdgeLabel::Real);
-//
-//         let bct = get_block_cut_tree(&g);
-//         assert_eq!(bct.cut_count, 1);
-//         assert_eq!(bct.block_count, 2);
-//         assert_eq!(bct.blocks.len(), 2);
-//     }
-//
-//     #[test]
-//     fn test_bc_root_cut_vertex() {
-//         let mut g = UnGraph::new_undirected();
-//         let a = g.add_node(0);
-//         let b = g.add_node(1);
-//         let c = g.add_node(2);
-//         g.add_edge(a, b, EdgeLabel::Real);
-//         g.add_edge(a, c, EdgeLabel::Real);
-//
-//         let bct = get_block_cut_tree(&g);
-//         assert_eq!(bct.cut_count, 1);
-//         assert_eq!(bct.block_count, 2);
-//         assert_eq!(bct.blocks.len(), 2);
-//     }
-// }
+#[cfg(test)]
+mod bc_tests {
+    use super::*;
+    use petgraph::graph::UnGraph;
+
+    // TODO: make this tests more comprehensive
+    #[test]
+    fn test_bc_single_edge() {
+        let mut g = UnGraph::new_undirected();
+        let a = g.add_node(0);
+        let b = g.add_node(1);
+        g.add_edge(a, b, EdgeLabel::Real);
+
+        let bct = get_block_cut_tree(&g);
+        assert_eq!(bct.block_count, 1);
+        assert_eq!(bct.cut_count, 0);
+    }
+
+    #[test]
+    fn test_bc_triangle() {
+        let mut g = UnGraph::new_undirected();
+        let a = g.add_node(0);
+        let b = g.add_node(1);
+        let c = g.add_node(2);
+        g.add_edge(a, b, EdgeLabel::Real);
+        g.add_edge(b, c, EdgeLabel::Real);
+        g.add_edge(c, a, EdgeLabel::Real);
+
+        let bct = get_block_cut_tree(&g);
+        assert_eq!(bct.block_count, 1);
+        assert_eq!(bct.cut_count, 0);
+    }
+
+    #[test]
+    fn test_bc_cut_vertex() {
+        let mut g = UnGraph::new_undirected();
+        let a = g.add_node(0);
+        let b = g.add_node(1);
+        let c = g.add_node(2);
+        g.add_edge(a, b, EdgeLabel::Real);
+        g.add_edge(b, c, EdgeLabel::Real);
+
+        let bct = get_block_cut_tree(&g);
+        assert_eq!(bct.cut_count, 1);
+        assert_eq!(bct.block_count, 2);
+    }
+
+    #[test]
+    fn test_bc_root_cut_vertex() {
+        let mut g = UnGraph::new_undirected();
+        let a = g.add_node(0);
+        let b = g.add_node(1);
+        let c = g.add_node(2);
+        g.add_edge(a, b, EdgeLabel::Real);
+        g.add_edge(a, c, EdgeLabel::Real);
+
+        let bct = get_block_cut_tree(&g);
+        assert_eq!(bct.cut_count, 1);
+        assert_eq!(bct.block_count, 2);
+    }
+}

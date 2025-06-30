@@ -10,7 +10,7 @@ use petgraph::dot::{Config, Dot};
 /// Real edges are solid and virtual edges are dashed.
 ///
 /// Structure edges are omitted.
-pub fn to_dot_str(graph: &UnGraph) -> String {
+pub fn draw_graph(graph: &UnGraph) -> String {
     Dot::with_attr_getters(
         graph,
         &[Config::EdgeNoLabel, Config::NodeNoLabel],
@@ -33,7 +33,7 @@ pub fn to_dot_str(graph: &UnGraph) -> String {
 
 /// Writes the graph to a file in DOT format.
 pub fn to_dot_file(graph: &UnGraph, path: &str) {
-    let dot_str = to_dot_str(graph);
+    let dot_str = draw_graph(graph);
     to_file(&dot_str, path);
 }
 

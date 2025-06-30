@@ -4,7 +4,7 @@ use spqr_trees::input::from_file;
 use spqr_trees::palm_tree::{draw_palm_tree, get_palm_tree};
 
 fn main() {
-    let graph = from_file("assets/graph.in");
+    let graph = from_file("assets/posch.in");
 
     let palm_tree = get_palm_tree(&graph);
 
