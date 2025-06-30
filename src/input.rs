@@ -43,7 +43,7 @@ use std::io::{BufRead, BufReader, Cursor};
 ///
 /// # Another code example
 /// ```rust
-/// use your_crate::input::from_str;
+/// use spqr_trees::input::from_str;
 ///
 /// let input = "1,2\n2,3\n";
 /// let graph = from_str(input);
@@ -67,6 +67,7 @@ pub fn from_file(path: &str) -> UnGraph {
 
 fn parse_graph_from_custom_format<R: BufRead>(reader: R) -> UnGraph {
     let mut edges = Vec::new();
+    // we pay additional O(log n), but we are gaining relation between node labels and internal ids
     let mut node_ids = BTreeSet::<u32>::new();
     let mut ids_to_internal = HashMap::<u32, NodeIndex>::new();
 
@@ -114,7 +115,7 @@ fn parse_graph_from_custom_format<R: BufRead>(reader: R) -> UnGraph {
 }
 
 #[cfg(test)]
-mod tests {
+mod input_tests {
     use super::*;
 
     #[test]

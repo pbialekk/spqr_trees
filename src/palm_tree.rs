@@ -6,7 +6,7 @@ use std::usize;
 
 /// Computes low points/palm tree of a graph.
 ///
-/// TODO: explain what low points are.
+/// TODO: explain what low points are and rewrite ifs in dfs, change parent type to Optional.
 ///
 /// Graph should be undirected, connected and simple.
 ///
@@ -21,7 +21,7 @@ pub fn get_palm_tree(g: &UnGraph) -> PalmTree {
         .next()
         .expect("Graph should not be empty");
     let root_id = g.to_index(root.id());
-    _dfs(&g, root_id, usize::MAX, &mut palm_tree);
+    dfs(&g, root_id, usize::MAX, &mut palm_tree);
 
     palm_tree
 }
@@ -145,7 +145,7 @@ impl PalmTree {
 }
 
 /// Helper that performs the required DFS in a recursive manner.
-fn _dfs(g: &UnGraph, current_node: usize, _: usize, palm_tree: &mut PalmTree) {
+fn dfs(g: &UnGraph, current_node: usize, _: usize, palm_tree: &mut PalmTree) {
     palm_tree.rank[current_node] = palm_tree.time;
     palm_tree.rank_to_node.insert(palm_tree.time, current_node);
     palm_tree.visited.insert(current_node);
@@ -166,7 +166,7 @@ fn _dfs(g: &UnGraph, current_node: usize, _: usize, palm_tree: &mut PalmTree) {
             palm_tree.edge_labels[edge_index] = DFSEdgeLabel::Tree;
             palm_tree.parent[child_node] = current_node;
 
-            _dfs(g, child_node, current_node, palm_tree);
+            dfs(g, child_node, current_node, palm_tree);
 
             if palm_tree.low1[child_node] < palm_tree.low1[current_node] {
                 palm_tree.low2[current_node] =

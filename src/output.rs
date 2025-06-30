@@ -8,12 +8,19 @@ use petgraph::dot::{Config, Dot};
 /// It adds colors also.
 ///
 /// Real edges are solid and virtual edges are dashed.
+///
+/// Structure edges are omitted.
 pub fn to_dot_str(graph: &UnGraph) -> String {
-    // TODO: add case when we have virtual edges
     Dot::with_attr_getters(
         graph,
         &[Config::EdgeNoLabel, Config::NodeNoLabel],
-        &|_, edge_ref| format!("label=\"{}\"", edge_ref.weight()),
+        &|_, edge_ref| {
+            return if *edge_ref.weight() == crate::EdgeLabel::Virtual {
+                "style=dashed".to_string()
+            } else {
+                "style=solid".to_string()
+            }
+        },
         &|g, node_ref| {
             format!(
                 "label=\"{}\", style=filled, fillcolor=lightblue",
@@ -34,3 +41,5 @@ pub fn to_dot_file(graph: &UnGraph, path: &str) {
 pub fn to_file(content: &str, path: &str) {
     std::fs::write(path, content).expect("Rust should write to file");
 }
+
+// TODO: write tests

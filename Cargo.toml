@@ -8,6 +8,7 @@ description = "SPQR tree construction based on petgraph library"
 embed-doc-image = "0.1.4"
 fixedbitset = "0.5.7"
 hashbrown = "0.15.3"
+radsort = "0.1.1"
 
 [dependencies.petgraph]
 version = "0.8.1"
