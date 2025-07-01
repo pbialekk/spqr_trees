@@ -261,11 +261,14 @@ pub fn get_block_cut_tree(graph: &UnGraph) -> BlockCutTree {
 /// Cut vertices are represented as red nodes (C_j) along with their real labels.
 pub fn draw_skeleton_of_block_cut_tree_dot(bct: &BlockCutTree) -> String {
     let mut output = String::from("graph {\n");
+    // it just works fot trees
+    output.push_str("rankdir=TD;\n");
+    output.push_str("node [style=filled];\n");
 
     // Add block nodes (green, label B_i)
     for i in 0..bct.block_count {
         output.push_str(&format!(
-            "  block{} [label=\"B_{}\", style=filled, fillcolor=green, fontcolor=white, shape=ellipse];\n",
+            "  block{} [label=\"B_{}\", fillcolor=lightgreen, fontcolor=black, shape=ellipse];\n",
             i, i
         ));
     }
@@ -275,7 +278,7 @@ pub fn draw_skeleton_of_block_cut_tree_dot(bct: &BlockCutTree) -> String {
         let idx = bct.block_count + i;
         let label = bct.graph.node_weight(NodeIndex::new(idx)).unwrap();
         output.push_str(&format!(
-            "  cut{} [label=\"C_{} ({})\", style=filled, fillcolor=red, fontcolor=white, shape=ellipse];\n",
+            "  cut{} [label=\"C_{} ({})\", fillcolor=lightcoral, fontcolor=black, shape=box];\n",
             idx, i, label
         ));
     }

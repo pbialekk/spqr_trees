@@ -1,5 +1,5 @@
 /// Example of outputting a graph in DOT format.
-/// I use it with `cargo run --example output | dot -Tsvg > posch.svg`
+/// I use it with `cargo run --example output | neato -Tsvg > posch.svg`
 use spqr_trees::input::from_file;
 use spqr_trees::output::draw_graph;
 
