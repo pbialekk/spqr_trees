@@ -3,7 +3,8 @@ use petgraph::visit::{EdgeRef, IntoNodeReferences, NodeIndexable};
 
 /// Based on https://www.sciencedirect.com/science/article/pii/S1570866708000415
 fn dfs(
-    graph: &UnGraph,
+    graph: &Vec<Vec<usize>>,
+    edge_list: &Vec<(usize, usize)>,
     u: usize,
     time: &mut usize,
     parent: Option<usize>,
@@ -26,16 +27,22 @@ fn dfs(
 
     let mut tree_edges = Vec::new();
 
-    for (v, eid) in graph
-        .edges_directed(graph.from_index(u), petgraph::Direction::Outgoing)
-        .map(|e| (e.target().index(), e.id().index()))
-    {
+    for &eid in &graph[u] {
+        let v = edge_list[eid].0 ^ edge_list[eid].1 ^ u;
         if Some(eid) == parent {
             continue;
         }
         if preorder[v] == usize::MAX {
-            let (v_low, v_lowv, mut v_stack) =
-                dfs(graph, v, time, Some(eid), preorder, split_pairs, subsz);
+            let (v_low, v_lowv, mut v_stack) = dfs(
+                graph,
+                edge_list,
+                v,
+                time,
+                Some(eid),
+                preorder,
+                split_pairs,
+                subsz,
+            );
             tree_edges.push(eid);
 
             subsz[u] += subsz[v];
@@ -48,7 +55,7 @@ fn dfs(
             if let Some(&(i, y, b, p, _)) = v_stack.last() {
                 if v_stack.last().unwrap().4 == v {
                     v_stack.pop();
-                    split_pairs.push((i, eid));
+                    split_pairs.push((eid, i));
                     if p != u {
                         v_stack.push((i, y, b, p, u));
                     }
@@ -111,10 +118,8 @@ fn dfs(
     }
 
     let mut k = 0;
-    for (v, eid) in graph
-        .edges_directed(graph.from_index(u), petgraph::Direction::Outgoing)
-        .map(|e| (e.target().index(), e.id().index()))
-    {
+    for &eid in &graph[u] {
+        let v = edge_list[eid].0 ^ edge_list[eid].1 ^ u;
         if preorder[v] <= preorder[u] {
             continue;
         }
@@ -133,17 +138,21 @@ fn dfs(
 }
 
 /// Given a graph, returns a list of indices of pairs of edges that are it's split pairs. Not all pairs are listed, only those that are enough to properly construct the tri-edge-connected components.
-pub fn get_edge_split_pairs(graph: &UnGraph) -> Vec<(usize, usize)> {
-    let graph_size = graph.node_references().size_hint().0;
+pub fn get_edge_split_pairs(
+    graph: &Vec<Vec<usize>>,
+    edge_list: &Vec<(usize, usize)>,
+) -> Vec<(usize, usize)> {
+    let graph_size = graph.len();
     let mut split_pairs = Vec::new();
     let mut time = 0;
     let mut preorder = vec![usize::MAX; graph_size];
     let mut subsz = vec![1; graph_size];
 
-    for u in graph.node_references().map(|(n, _)| n.index()) {
+    for u in 0..graph_size {
         if preorder[u] == usize::MAX {
             dfs(
                 graph,
+                edge_list,
                 u,
                 &mut time,
                 None,
