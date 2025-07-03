@@ -1,3 +1,5 @@
+use std::mem::swap;
+
 /// Reference: https://dl.acm.org/doi/pdf/10.5555/1862776.1862783
 use crate::{UnGraph, tsin::get_edge_split_pairs};
 use petgraph::visit::{EdgeRef, IntoNodeReferences, NodeIndexable};
@@ -69,8 +71,9 @@ fn reduce_vertex(
 ) {
     sort_by_key(&mut graph[u], |&eid| {
         let v = edge_list[eid].0 ^ edge_list[eid].1 ^ u;
-        -(preorder[u] as isize)
+        -(preorder[v] as isize)
     });
+
     // Let a_1, ..., a_k be the sequence of nodes such that \exists (u, u_i) \in non-tree-edges. (sorted by preorder)
     // Let b_1, ..., b_k be the sequence of nodes such that \exists (u_i, u) \in non-tree-edges. (...)
     // We replace u with a tree-path fake(a_k) -- ... -- fake(a_1) -- fake(b_k) -- ... -- fake(b_1).
@@ -79,7 +82,9 @@ fn reduce_vertex(
     let mut children = Vec::new();
     for &eid in &graph[u] {
         if is_tree_edge[eid] {
-            children.push(eid);
+            if Some(eid) != parent {
+                children.push(eid);
+            }
             continue;
         }
         let v = edge_list[eid].0 ^ edge_list[eid].1 ^ u;
@@ -103,8 +108,6 @@ fn reduce_vertex(
 
         if last_created != usize::MAX {
             add_edge(edge_list, is_tree_edge, graph, last_created, fake, true);
-            graph[last_created].push(edge_list.len() - 1);
-            graph[fake].push(edge_list.len() - 1);
         }
 
         if first_created == usize::MAX {
@@ -124,18 +127,14 @@ fn reduce_vertex(
     }
 
     if let Some(p) = parent {
-        let parent_v = edge_list[p].0 ^ edge_list[p].1 ^ first_created;
-        add_edge(
-            edge_list,
-            is_tree_edge,
-            graph,
-            parent_v,
-            first_created,
-            true,
-        );
-        graph[parent_v].push(edge_list.len() - 1);
-        graph[first_created].push(edge_list.len() - 1);
+        if u == edge_list[p].0 {
+            edge_list[p].0 = first_created;
+        } else {
+            edge_list[p].1 = first_created;
+        }
+        graph[first_created].push(p);
     }
+
     for eid in children {
         if edge_list[eid].0 == u {
             edge_list[eid].0 = last_created;
@@ -208,11 +207,13 @@ fn dfs(
             min_child_low = min_child_low.min((low1[v], low1_realizer[v]));
 
             if low1[v] < low1[u] {
-                low2[u] = low1[u];
+                low2[u] = low1[u].min(low2[v]);
                 low1[u] = low1[v];
                 low1_realizer[u] = low1_realizer[v];
-            } else if low1[v] < low2[u] {
-                low2[u] = low1[v];
+            } else if low1[v] == low1[u] {
+                low2[u] = low2[u].min(low2[v]);
+            } else {
+                low2[u] = low2[u].min(low1[v]);
             }
         } else if preorder[v] < preorder[u] {
             // a back edge
@@ -220,8 +221,8 @@ fn dfs(
                 low2[u] = low1[u];
                 low1[u] = preorder[v];
                 low1_realizer[u] = v;
-            } else if preorder[v] < low2[u] {
-                low2[u] = preorder[v];
+            } else if preorder[v] > low1[u] {
+                low2[u] = low2[u].min(preorder[v]);
             }
         }
     }
@@ -323,6 +324,17 @@ fn reduce(
         }
     }
 
+    // for (i, &(u, v)) in edge_list.iter().enumerate() {
+    //     println!(
+    //         "{}({}) {}({}) {}",
+    //         u,
+    //         preorder_to_vertex[preorder[u]],
+    //         v,
+    //         preorder_to_vertex[preorder[v]],
+    //         if is_tree_edge[i] { 't' } else { 'f' }
+    //     );
+    // }
+
     (
         graph,
         edge_list,
@@ -350,11 +362,11 @@ pub fn get_vertex_split_pairs(in_graph: UnGraph) -> Vec<(usize, usize)> {
     ) = reduce(&in_graph);
 
     let mut result = split_pairs;
+
     for (u, v) in get_edge_split_pairs(&graph, &edge_list) {
         if !is_tree_edge[u] || !is_tree_edge[v] {
             continue;
         }
-        dbg!((u, v));
 
         let u_owner = vec![
             preorder_to_vertex[preorder[edge_list[u].0]],
@@ -367,8 +379,12 @@ pub fn get_vertex_split_pairs(in_graph: UnGraph) -> Vec<(usize, usize)> {
 
         for &x in &u_owner {
             for &y in &v_owner {
+                let (x, y) = if preorder[x] > preorder[y] {
+                    (y, x)
+                } else {
+                    (x, y)
+                };
                 if x != y
-                    && preorder[x] <= preorder[y]
                     && preorder[y] < preorder[x] + subsz[x]
                     && !(low1[x] == preorder[x] && subsz[y] == 1)
                 {
@@ -419,7 +435,105 @@ pub fn get_vertex_split_pairs(in_graph: UnGraph) -> Vec<(usize, usize)> {
     result.sort();
     result.dedup();
 
-    dbg!(&result);
-
     result
+}
+
+#[cfg(test)]
+mod reduce_tests {
+    use super::*;
+    use crate::{EdgeLabel, UnGraph};
+
+    fn get_triconnected_components(graph: &UnGraph) -> Vec<Vec<usize>> {
+        let n = graph.node_references().count();
+        let mut res: Vec<Vec<usize>> = Vec::new();
+        let mut cap = vec![vec![0; n * 2]; n * 2]; // indices from 0 to n-1 are 'ins', rest are 'outs'
+
+        for (u, v) in graph
+            .edge_references()
+            .map(|e| (e.source().index(), e.target().index()))
+        {
+            cap[u + n][v] += 1;
+            cap[v + n][u] += 1;
+        }
+        for u in 0..n {
+            cap[u][u + n] += 1; // ins to outs
+        }
+
+        fn is_3_conn(s: usize, t: usize, cap: &Vec<Vec<usize>>) -> bool {
+            let mut cap = cap.clone();
+            let mut vis = vec![false; cap.len()];
+            fn dfs(u: usize, t: usize, cap: &mut Vec<Vec<usize>>, vis: &mut Vec<bool>) -> bool {
+                vis[u] = true;
+                if u == t {
+                    return true;
+                }
+                for v in 0..cap.len() {
+                    if !vis[v] && cap[u][v] > 0 {
+                        if dfs(v, t, cap, vis) {
+                            cap[u][v] -= 1;
+                            cap[v][u] += 1;
+                            return true;
+                        }
+                    }
+                }
+                false
+            }
+            for i in 0..3 {
+                if !dfs(s + cap.len() / 2, t, &mut cap, &mut vis) {
+                    return false;
+                }
+                vis.fill(false);
+            }
+            true
+        }
+
+        let mut vis = vec![false; n * 2];
+        for u in 0..n {
+            if vis[u] {
+                continue;
+            }
+            vis[u] = true;
+            res.push(vec![u]);
+            for v in 0..n {
+                if vis[v] {
+                    continue;
+                }
+                if is_3_conn(u, v, &cap) {
+                    res.last_mut().unwrap().push(v);
+                    vis[v] = true;
+                }
+            }
+        }
+
+        res
+    }
+
+    #[test]
+    fn test_brute_triangle() {
+        let mut g = UnGraph::new_undirected();
+        let a = g.add_node(0);
+        let b = g.add_node(1);
+        let c = g.add_node(2);
+        g.add_edge(a, b, EdgeLabel::Real);
+        g.add_edge(b, c, EdgeLabel::Real);
+        g.add_edge(c, a, EdgeLabel::Real);
+        let components = get_triconnected_components(&g);
+        assert_eq!(components, vec![vec![0], vec![1], vec![2]]);
+    }
+    #[test]
+    fn test_brute_diamond() {
+        let mut g = UnGraph::new_undirected();
+        let a = g.add_node(0);
+        let b = g.add_node(1);
+        let c = g.add_node(2);
+        let d = g.add_node(3);
+
+        g.add_edge(a, c, EdgeLabel::Real);
+        g.add_edge(a, d, EdgeLabel::Real);
+        g.add_edge(a, b, EdgeLabel::Real);
+        g.add_edge(c, d, EdgeLabel::Real);
+        g.add_edge(d, b, EdgeLabel::Real);
+        let components = get_triconnected_components(&g);
+        assert_eq!(components, vec![vec![0, 3], vec![1], vec![2]]);
+    }
 }
