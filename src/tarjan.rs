@@ -282,11 +282,6 @@ fn dfs_3(
                 remaining_tree_edges,
             );
 
-            if starts_path {
-                // This edge was the first edge on some path (a beggining of a cycle). Since a split pair (a, b) is always on some cycle, we can safely pop all the candidates from the "possible candidates" stack (since we won't touch this cycle ever again).
-                estack.clear();
-            }
-
             ensure_highpoints(u, tstack, high);
         } else {
             // A back edge (upwards)
