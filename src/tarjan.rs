@@ -164,7 +164,7 @@ fn dfs_3(
             mut max_h: usize,
             mut last_b: usize,
             tstack: &mut Vec<(usize, usize, usize)>,
-        ) -> (usize, usize) {
+        ) -> (usize, usize, usize) {
             while let Some(&(h, a, b)) = tstack.last() {
                 if a > cutoff {
                     tstack.pop();
@@ -175,17 +175,16 @@ fn dfs_3(
                 }
             }
 
-            (max_h, last_b)
+            (max_h, cutoff, last_b)
         }
 
         let (max_h, a, last_b) = if Some(u) == parent[to] {
             // A tree edge
-            (to + subsz[to] - 1, lowpt1[to], u)
+            pop_tstack(lowpt1[to], to + subsz[to] - 1, u, tstack)
         } else {
             // A back edge (upwards)
-            (u, to, u)
+            pop_tstack(to, u, u, tstack)
         };
-        let (max_h, last_b) = pop_tstack(to, max_h, last_b, tstack);
         tstack.push((max_h, a, last_b));
     }
 
@@ -249,7 +248,7 @@ fn dfs_3(
     for (to, eid) in adj[u].iter().map(|&eid| (edges[eid].1, eid)) {
         let starts_path = eid != adj[u][0];
         if starts_path {
-            update_tstack(u, to, tstack, subsz, parent);
+            update_tstack(u, to, tstack, lowpt1, subsz, parent);
         }
         if Some(u) == parent[to] {
             // A tree edge
