@@ -18,23 +18,21 @@ fn dfs_0(
         .map(|&v| (v, edges[v].0 ^ edges[v].1 ^ u))
         .collect();
 
-    if par_edge.is_some() {
-        // If we have a parent edge, we need to remove it from the adjacency list
-        adj[u].retain(|&v| v != par_edge.unwrap());
-    }
+    let mut new_neighbors = vec![];
 
     for (eid, to) in neighbors {
         if Some(eid) == par_edge {
             continue;
         }
+
         if vis[to] {
             // a back edge (maybe from downwards to us!) direct from u to to and delete from 'to'
             if vis_edge[eid] {
                 // already processed this edge, remove from adjacency list
-                // TODO: make it faster
-                adj[u].retain(|&v| v != eid);
                 continue;
             }
+            new_neighbors.push(eid);
+
             vis_edge[eid] = true;
 
             if edges[eid].0 != u {
@@ -42,14 +40,21 @@ fn dfs_0(
             }
             continue;
         }
+
+        new_neighbors.push(eid);
+
         // A tree edge to an unvisited node, direct it from u to to
         vis_edge[eid] = true;
+
         if edges[eid].0 != u {
             swap(&mut edges[eid].0, &mut edges[eid].1);
         }
+
         // And go deeper
         dfs_0(adj, edges, vis, to, Some(eid), vis_edge);
     }
+
+    adj[u] = new_neighbors;
 }
 
 fn dfs_1(
@@ -247,4 +252,6 @@ pub fn cos(mut adj: Vec<Vec<usize>>, mut edges: Vec<(usize, usize)>) {
     }
 
     println!("{}", draw(&adj, &edges, &lowpt1, &lowpt2, &parent, &subsz));
+
+    // Step 4: finding the split components. Linked paper provides an ''easy'' conditions for a pair of vertices to be a split pair. The margin here is too narrow to explain it, so I encourage you to read https://www.inf.uni-konstanz.de/exalgo/members/mader/thesis.pdf pages 20-21. (It has a nice drawings too!) Page 13 contains the definition of a type-1/2 split pair.
 }
