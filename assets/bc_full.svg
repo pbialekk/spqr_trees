@@ -39,13 +39,13 @@
 <!-- b_0_10 -->
 <g id="node1" class="node">
 <title>b_0_10</title>
-<ellipse fill="lightblue" stroke="lightblue" cx="333.18" cy="-756.18" rx="20.13" ry="20.13"/>
+<ellipse fill="lightblue" stroke="black" cx="333.18" cy="-756.18" rx="20.13" ry="20.13"/>
 <text xml:space="preserve" text-anchor="middle" x="333.18" y="-751.13" font-family="Times,serif" font-size="14.00">10</text>
 </g>
 <!-- b_0_17 -->
 <g id="node2" class="node">
 <title>b_0_17</title>
-<ellipse fill="lightblue" stroke="lightblue" cx="261.56" cy="-785.37" rx="20.13" ry="20.13"/>
+<ellipse fill="lightblue" stroke="black" cx="261.56" cy="-785.37" rx="20.13" ry="20.13"/>
 <text xml:space="preserve" text-anchor="middle" x="261.56" y="-780.32" font-family="Times,serif" font-size="14.00">17</text>
 </g>
 <!-- b_0_10&#45;&#45;b_0_17 -->
@@ -56,7 +56,7 @@
 <!-- b_0_18 -->
 <g id="node3" class="node">
 <title>b_0_18</title>
-<ellipse fill="lightblue" stroke="lightblue" cx="307.34" cy="-830.42" rx="20.13" ry="20.13"/>
+<ellipse fill="lightblue" stroke="black" cx="307.34" cy="-830.42" rx="20.13" ry="20.13"/>
 <text xml:space="preserve" text-anchor="middle" x="307.34" y="-825.37" font-family="Times,serif" font-size="14.00">18</text>
 </g>
 <!-- b_0_10&#45;&#45;b_0_18 -->
@@ -83,13 +83,13 @@
 <!-- b_1_10 -->
 <g id="node4" class="node">
 <title>b_1_10</title>
-<ellipse fill="lightblue" stroke="lightblue" cx="457.13" cy="-776.86" rx="20.13" ry="20.13"/>
+<ellipse fill="lightblue" stroke="black" cx="457.13" cy="-776.86" rx="20.13" ry="20.13"/>
 <text xml:space="preserve" text-anchor="middle" x="457.13" y="-771.81" font-family="Times,serif" font-size="14.00">10</text>
 </g>
 <!-- b_1_16 -->
 <g id="node5" class="node">
 <title>b_1_16</title>
-<ellipse fill="lightblue" stroke="lightblue" cx="493.23" cy="-846.89" rx="20.13" ry="20.13"/>
+<ellipse fill="lightblue" stroke="black" cx="493.23" cy="-846.89" rx="20.13" ry="20.13"/>
 <text xml:space="preserve" text-anchor="middle" x="493.23" y="-841.84" font-family="Times,serif" font-size="14.00">16</text>
 </g>
 <!-- b_1_10&#45;&#45;b_1_16 -->
@@ -105,13 +105,13 @@
 <!-- b_2_8 -->
 <g id="node6" class="node">
 <title>b_2_8</title>
-<ellipse fill="lightblue" stroke="lightblue" cx="663.36" cy="-470.05" rx="18" ry="18"/>
+<ellipse fill="lightblue" stroke="black" cx="663.36" cy="-470.05" rx="18" ry="18"/>
 <text xml:space="preserve" text-anchor="middle" x="663.36" y="-465" font-family="Times,serif" font-size="14.00">8</text>
 </g>
 <!-- b_2_12 -->
 <g id="node7" class="node">
 <title>b_2_12</title>
-<ellipse fill="lightblue" stroke="lightblue" cx="730.04" cy="-458.37" rx="20.13" ry="20.13"/>
+<ellipse fill="lightblue" stroke="black" cx="730.04" cy="-458.37" rx="20.13" ry="20.13"/>
 <text xml:space="preserve" text-anchor="middle" x="730.04" y="-453.32" font-family="Times,serif" font-size="14.00">12</text>
 </g>
 <!-- b_2_8&#45;&#45;b_2_12 -->
@@ -122,7 +122,7 @@
 <!-- b_2_14 -->
 <g id="node9" class="node">
 <title>b_2_14</title>
-<ellipse fill="lightblue" stroke="lightblue" cx="737.67" cy="-516.91" rx="20.13" ry="20.13"/>
+<ellipse fill="lightblue" stroke="black" cx="737.67" cy="-516.91" rx="20.13" ry="20.13"/>
 <text xml:space="preserve" text-anchor="middle" x="737.67" y="-511.86" font-family="Times,serif" font-size="14.00">14</text>
 </g>
 <!-- b_2_8&#45;&#45;b_2_14 -->
@@ -133,7 +133,7 @@
 <!-- b_2_15 -->
 <g id="node10" class="node">
 <title>b_2_15</title>
-<ellipse fill="lightblue" stroke="lightblue" cx="717.11" cy="-401.54" rx="20.13" ry="20.13"/>
+<ellipse fill="lightblue" stroke="black" cx="717.11" cy="-401.54" rx="20.13" ry="20.13"/>
 <text xml:space="preserve" text-anchor="middle" x="717.11" y="-396.49" font-family="Times,serif" font-size="14.00">15</text>
 </g>
 <!-- b_2_8&#45;&#45;b_2_15 -->
@@ -155,7 +155,7 @@
 <!-- b_2_13 -->
 <g id="node8" class="node">
 <title>b_2_13</title>
-<ellipse fill="lightblue" stroke="lightblue" cx="791.77" cy="-448.19" rx="20.13" ry="20.13"/>
+<ellipse fill="lightblue" stroke="black" cx="791.77" cy="-448.19" rx="20.13" ry="20.13"/>
 <text xml:space="preserve" text-anchor="middle" x="791.77" y="-443.14" font-family="Times,serif" font-size="14.00">13</text>
 </g>
 <!-- b_2_12&#45;&#45;b_2_13 -->
@@ -176,13 +176,13 @@
 <!-- b_3_7 -->
 <g id="node11" class="node">
 <title>b_3_7</title>
-<ellipse fill="lightblue" stroke="lightblue" cx="429.2" cy="-470.94" rx="18" ry="18"/>
+<ellipse fill="lightblue" stroke="black" cx="429.2" cy="-470.94" rx="18" ry="18"/>
 <text xml:space="preserve" text-anchor="middle" x="429.2" y="-465.89" font-family="Times,serif" font-size="14.00">7</text>
 </g>
 <!-- b_3_8 -->
 <g id="node12" class="node">
 <title>b_3_8</title>
-<ellipse fill="lightblue" stroke="lightblue" cx="501.66" cy="-505.44" rx="18" ry="18"/>
+<ellipse fill="lightblue" stroke="black" cx="501.66" cy="-505.44" rx="18" ry="18"/>
 <text xml:space="preserve" text-anchor="middle" x="501.66" y="-500.39" font-family="Times,serif" font-size="14.00">8</text>
 </g>
 <!-- b_3_7&#45;&#45;b_3_8 -->
@@ -193,7 +193,7 @@
 <!-- b_3_11 -->
 <g id="node15" class="node">
 <title>b_3_11</title>
-<ellipse fill="lightblue" stroke="lightblue" cx="437.1" cy="-547.8" rx="20.13" ry="20.13"/>
+<ellipse fill="lightblue" stroke="black" cx="437.1" cy="-547.8" rx="20.13" ry="20.13"/>
 <text xml:space="preserve" text-anchor="middle" x="437.1" y="-542.75" font-family="Times,serif" font-size="14.00">11</text>
 </g>
 <!-- b_3_7&#45;&#45;b_3_11 -->
@@ -215,7 +215,7 @@
 <!-- b_3_9 -->
 <g id="node13" class="node">
 <title>b_3_9</title>
-<ellipse fill="lightblue" stroke="lightblue" cx="487.15" cy="-587.86" rx="18" ry="18"/>
+<ellipse fill="lightblue" stroke="black" cx="487.15" cy="-587.86" rx="18" ry="18"/>
 <text xml:space="preserve" text-anchor="middle" x="487.15" y="-582.81" font-family="Times,serif" font-size="14.00">9</text>
 </g>
 <!-- b_3_8&#45;&#45;b_3_9 -->
@@ -236,7 +236,7 @@
 <!-- b_3_10 -->
 <g id="node14" class="node">
 <title>b_3_10</title>
-<ellipse fill="lightblue" stroke="lightblue" cx="422.5" cy="-629.46" rx="20.13" ry="20.13"/>
+<ellipse fill="lightblue" stroke="black" cx="422.5" cy="-629.46" rx="20.13" ry="20.13"/>
 <text xml:space="preserve" text-anchor="middle" x="422.5" y="-624.41" font-family="Times,serif" font-size="14.00">10</text>
 </g>
 <!-- b_3_9&#45;&#45;b_3_10 -->
@@ -262,13 +262,13 @@
 <!-- b_4_2 -->
 <g id="node16" class="node">
 <title>b_4_2</title>
-<ellipse fill="lightblue" stroke="lightblue" cx="233.75" cy="-234.58" rx="18" ry="18"/>
+<ellipse fill="lightblue" stroke="black" cx="233.75" cy="-234.58" rx="18" ry="18"/>
 <text xml:space="preserve" text-anchor="middle" x="233.75" y="-229.53" font-family="Times,serif" font-size="14.00">2</text>
 </g>
 <!-- b_4_5 -->
 <g id="node17" class="node">
 <title>b_4_5</title>
-<ellipse fill="lightblue" stroke="lightblue" cx="256.47" cy="-310.56" rx="18" ry="18"/>
+<ellipse fill="lightblue" stroke="black" cx="256.47" cy="-310.56" rx="18" ry="18"/>
 <text xml:space="preserve" text-anchor="middle" x="256.47" y="-305.51" font-family="Times,serif" font-size="14.00">5</text>
 </g>
 <!-- b_4_2&#45;&#45;b_4_5 -->
@@ -279,7 +279,7 @@
 <!-- b_4_6 -->
 <g id="node18" class="node">
 <title>b_4_6</title>
-<ellipse fill="lightblue" stroke="lightblue" cx="303.99" cy="-271.89" rx="18" ry="18"/>
+<ellipse fill="lightblue" stroke="black" cx="303.99" cy="-271.89" rx="18" ry="18"/>
 <text xml:space="preserve" text-anchor="middle" x="303.99" y="-266.84" font-family="Times,serif" font-size="14.00">6</text>
 </g>
 <!-- b_4_2&#45;&#45;b_4_6 -->
@@ -306,7 +306,7 @@
 <!-- b_4_7 -->
 <g id="node19" class="node">
 <title>b_4_7</title>
-<ellipse fill="lightblue" stroke="lightblue" cx="326.28" cy="-347.74" rx="18" ry="18"/>
+<ellipse fill="lightblue" stroke="black" cx="326.28" cy="-347.74" rx="18" ry="18"/>
 <text xml:space="preserve" text-anchor="middle" x="326.28" y="-342.69" font-family="Times,serif" font-size="14.00">7</text>
 </g>
 <!-- b_4_5&#45;&#45;b_4_7 -->
@@ -327,13 +327,13 @@
 <!-- b_5_2 -->
 <g id="node20" class="node">
 <title>b_5_2</title>
-<ellipse fill="lightblue" stroke="lightblue" cx="193.05" cy="-90.02" rx="18" ry="18"/>
+<ellipse fill="lightblue" stroke="black" cx="193.05" cy="-90.02" rx="18" ry="18"/>
 <text xml:space="preserve" text-anchor="middle" x="193.05" y="-84.97" font-family="Times,serif" font-size="14.00">2</text>
 </g>
 <!-- b_5_3 -->
 <g id="node21" class="node">
 <title>b_5_3</title>
-<ellipse fill="lightblue" stroke="lightblue" cx="222.64" cy="-18" rx="18" ry="18"/>
+<ellipse fill="lightblue" stroke="black" cx="222.64" cy="-18" rx="18" ry="18"/>
 <text xml:space="preserve" text-anchor="middle" x="222.64" y="-12.95" font-family="Times,serif" font-size="14.00">3</text>
 </g>
 <!-- b_5_2&#45;&#45;b_5_3 -->
@@ -344,7 +344,7 @@
 <!-- b_5_4 -->
 <g id="node22" class="node">
 <title>b_5_4</title>
-<ellipse fill="lightblue" stroke="lightblue" cx="157.43" cy="-21.78" rx="18" ry="18"/>
+<ellipse fill="lightblue" stroke="black" cx="157.43" cy="-21.78" rx="18" ry="18"/>
 <text xml:space="preserve" text-anchor="middle" x="157.43" y="-16.73" font-family="Times,serif" font-size="14.00">4</text>
 </g>
 <!-- b_5_2&#45;&#45;b_5_4 -->
@@ -365,13 +365,13 @@
 <!-- b_6_1 -->
 <g id="node23" class="node">
 <title>b_6_1</title>
-<ellipse fill="lightblue" stroke="lightblue" cx="18" cy="-179.31" rx="18" ry="18"/>
+<ellipse fill="lightblue" stroke="black" cx="18" cy="-179.31" rx="18" ry="18"/>
 <text xml:space="preserve" text-anchor="middle" x="18" y="-174.26" font-family="Times,serif" font-size="14.00">1</text>
 </g>
 <!-- b_6_2 -->
 <g id="node24" class="node">
 <title>b_6_2</title>
-<ellipse fill="lightblue" stroke="lightblue" cx="95.88" cy="-183.43" rx="18" ry="18"/>
+<ellipse fill="lightblue" stroke="black" cx="95.88" cy="-183.43" rx="18" ry="18"/>
 <text xml:space="preserve" text-anchor="middle" x="95.88" y="-178.38" font-family="Times,serif" font-size="14.00">2</text>
 </g>
 <!-- b_6_1&#45;&#45;b_6_2 -->

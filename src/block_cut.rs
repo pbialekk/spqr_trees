@@ -332,7 +332,7 @@ pub fn draw_full_block_cut_tree(bct: &BlockCutTree) -> String {
     for (i, block) in bct.blocks.iter().enumerate() {
         output.push_str(&format!("  subgraph cluster_{} {{\n", i));
         output.push_str("    style=filled;\n    color=lightgreen;\n");
-        output.push_str("    node [color=lightblue];\n");
+        output.push_str("    node [style=filled, fillcolor=lightblue];\n");
         // Add vertices
         for node in block.node_indices() {
             let label = block.node_weight(node).unwrap();
