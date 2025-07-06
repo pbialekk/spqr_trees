@@ -130,6 +130,182 @@ fn dfs_2(
     *time = time.saturating_sub(1);
 }
 
+fn dfs_3(
+    adj: &[Vec<usize>],
+    edges: &[(usize, usize)],
+    u: usize,
+    tstack: &mut Vec<(usize, usize, usize)>,
+    estack: &mut Vec<usize>,
+    high: &mut [Vec<usize>],
+    lowpt1: &[usize],
+    lowpt2: &[usize],
+    subsz: &[usize],
+    parent: &[Option<usize>],
+    deg: &mut [usize],
+) {
+    let mut remaining_tree_edges = adj[u]
+        .iter()
+        .filter(|&&eid| {
+            let to = edges[eid].1;
+            Some(u) == parent[to]
+        })
+        .count();
+
+    fn update_tstack(
+        u: usize,
+        to: usize,
+        tstack: &mut Vec<(usize, usize, usize)>,
+        subsz: &[usize],
+        parent: &[Option<usize>],
+    ) {
+        fn pop_tstack(
+            cutoff: usize,
+            mut max_h: usize,
+            mut last_b: usize,
+            tstack: &mut Vec<(usize, usize, usize)>,
+        ) -> (usize, usize) {
+            while let Some(&(h, a, b)) = tstack.last() {
+                if a > cutoff {
+                    tstack.pop();
+                    max_h = h.max(max_h);
+                    last_b = b;
+                } else {
+                    break;
+                }
+            }
+
+            (max_h, last_b)
+        }
+
+        let (max_h, last_b) = if Some(u) == parent[to] {
+            // A tree edge
+            (to + subsz[to] - 1, to)
+        } else {
+            // A back edge (upwards)
+            (u, u)
+        };
+        let (max_h, last_b) = pop_tstack(to, max_h, last_b, tstack);
+        tstack.push((max_h, to, last_b));
+    }
+
+    fn type_1_check(
+        u: usize,
+        to: usize,
+        lowpt1: &[usize],
+        lowpt2: &[usize],
+        parent: &[Option<usize>],
+        estack: &mut Vec<usize>,
+        edges: &[(usize, usize)],
+        subsz: &[usize],
+        remaining_tree_edges: usize,
+    ) {
+        if lowpt2[to] >= u && lowpt1[to] < u && (parent[u] != Some(0) || remaining_tree_edges > 0) {
+            // TODO: a new component
+            loop {
+                let &eid = estack.last().unwrap();
+                let (x, y) = edges[eid];
+
+                // Check if neither x nor y is in the subtree rooted at 'to'
+                let x_in_subtree = to <= x && x < to + subsz[to];
+                let y_in_subtree = to <= y && y < to + subsz[to];
+                if !x_in_subtree && !y_in_subtree {
+                    break;
+                }
+
+                // This edge belongs to a new component, add it
+                estack.pop();
+
+                if Some(lowpt1[to]) != parent[u] {
+                    // push newly created virtual edge to the estack
+                } else {
+                    // our virtual edge points to parent -- we now have a multiedge, handle it as well
+                }
+            }
+        }
+    }
+
+    fn type_2_check(to: usize) {
+        unimplemented!()
+    }
+
+    fn ensure_highpoints(u: usize, tstack: &mut Vec<(usize, usize, usize)>, high: &[Vec<usize>]) {
+        fn get_high(u: usize, high: &[Vec<usize>]) -> usize {
+            if high[u].is_empty() {
+                return 0;
+            }
+            *high[u].last().unwrap()
+        }
+
+        while let Some(&(h, a, b)) = tstack.last() {
+            if a != u && b != u && get_high(u, high) > h {
+                tstack.pop();
+            } else {
+                break;
+            }
+        }
+    }
+
+    for (to, eid) in adj[u].iter().map(|&eid| (edges[eid].1, eid)) {
+        let starts_path = eid != adj[u][0];
+        if starts_path {
+            update_tstack(u, to, tstack, subsz, parent);
+        }
+        if Some(u) == parent[to] {
+            // A tree edge
+            remaining_tree_edges -= 1;
+            let mut empty_vec = Vec::new();
+            dfs_3(
+                adj,
+                edges,
+                to,
+                if starts_path { &mut empty_vec } else { tstack },
+                estack,
+                high,
+                lowpt1,
+                lowpt2,
+                subsz,
+                parent,
+                deg,
+            );
+            estack.push(eid);
+
+            type_2_check(to);
+            type_1_check(
+                u,
+                to,
+                lowpt1,
+                lowpt2,
+                parent,
+                estack,
+                edges,
+                subsz,
+                remaining_tree_edges,
+            );
+
+            if starts_path {
+                // This edge was the first edge on some path (a beggining of a cycle). Since a split pair (a, b) is always on some cycle, we can safely pop all the candidates from the "possible candidates" stack (since we won't touch this cycle ever again).
+                let mut eid;
+                loop {
+                    eid = estack.pop().unwrap();
+                    if eid == usize::MAX {
+                        break;
+                    }
+                }
+            }
+
+            ensure_highpoints(u, tstack, high);
+        } else {
+            // A back edge (upwards)
+            if Some(to) == parent[u] {
+                // TODO
+                // A multiedge to a parent, new split component
+            } else {
+                estack.push(eid);
+            }
+        }
+    }
+}
+
 // Input: biconnected graph
 pub fn cos(mut adj: Vec<Vec<usize>>, mut edges: Vec<(usize, usize)>) {
     let n = adj.len();
@@ -248,9 +424,32 @@ pub fn cos(mut adj: Vec<Vec<usize>>, mut edges: Vec<(usize, usize)>) {
             subsz = new_subsz; // should be the same as before.
             high = new_high;
         }
+
+        for v in high.iter_mut() {
+            v.reverse(); // highest point is the last in the list, so we can pop it easily
+        }
     }
 
     println!("{}", draw(&adj, &edges, &lowpt1, &lowpt2, &parent, &subsz));
 
     // Step 4: finding the split components. Linked paper provides an ''easy'' conditions for a pair of vertices to be a split pair. The margin here is too narrow to explain it, so I encourage you to read https://www.inf.uni-konstanz.de/exalgo/members/mader/thesis.pdf pages 20-21. (It has a nice drawings too!) Page 13 contains the definition of a type-1/2 split pair.
+    {
+        let mut tstack = vec![];
+        let mut estack = vec![];
+        let mut deg = vec![0; n];
+        dfs_3(
+            &adj,
+            &edges,
+            0,
+            &mut tstack,
+            &mut estack,
+            &mut high,
+            &lowpt1,
+            &lowpt2,
+            &subsz,
+            &parent,
+            &mut deg,
+        );
+        // TODO: if estack is not empty, it's a new split component
+    }
 }
