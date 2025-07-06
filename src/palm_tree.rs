@@ -27,10 +27,18 @@ pub fn get_palm_tree(g: &UnGraph) -> PalmTree {
 }
 
 /// Returns a string representation of the palm tree in dot format.
+///
 /// LOWS are ids that you gave to nodes in the graph. They are not discovery times.
+///
+/// Tree edges are solid, back edges are dotted.
+///
+/// The root node is colored green.
+///
+/// Use returned string with `dot` not `neato`.
 pub fn draw_palm_tree(palm_tree: &PalmTree, g: &UnGraph) -> String {
     let mut dot_str = String::new();
     dot_str.push_str("digraph {\n");
+    dot_str.push_str("  node [style=filled, shape=ellipse];\n");
 
     for node in g.node_references() {
         let node_id = g.to_index(node.id());
@@ -49,7 +57,7 @@ pub fn draw_palm_tree(palm_tree: &PalmTree, g: &UnGraph) -> String {
         };
 
         dot_str.push_str(&format!(
-            "  {} [label=\"ID:{} LOWS: {}|{}\nRANK: {}\", style=filled, fillcolor={}];\n",
+            "  {} [label=\"ID:{} LOWS: {} | {}\nRANK: {}\", fillcolor={}];\n",
             node_id, node_label, low1_label, low2_label, dfs_time, color
         ));
     }
@@ -81,13 +89,13 @@ pub fn draw_palm_tree(palm_tree: &PalmTree, g: &UnGraph) -> String {
         };
 
         let style = match label {
-            DFSEdgeLabel::Back => ", style=\"dotted\"",
+            DFSEdgeLabel::Back => "style=\"dotted\"",
             _ => "",
         };
 
         dot_str.push_str(&format!(
-            "  {} -> {} [label=\"{}\"{}];\n",
-            from, to, label, style
+            "  {} -> {} [{}];\n",
+            from, to, style
         ));
     }
 
@@ -193,3 +201,5 @@ fn dfs(g: &UnGraph, current_node: usize, _: usize, palm_tree: &mut PalmTree) {
         }
     }
 }
+
+// TODO: tests

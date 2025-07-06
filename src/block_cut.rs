@@ -21,6 +21,7 @@ pub struct BlockCutTree {
     /// If node is a cut vertex, it will be mapped to block_count + cut_id
     /// Note that cut vertex is included in multiple blocks.
     /// If node is a block, it will be mapped to its block id.
+    /// This map goes from original graph internal indices to block-cut tree skeleton indices.
     pub node_to_id: Vec<usize>,
 }
 
@@ -38,7 +39,7 @@ impl BlockCutTree {}
 /// - Graph must be connected, otherwise you will get only first BC tree not the forest.
 ///
 /// </div>
-fn dfs(
+fn dfs( // TODO: refactor this to take mut struct with parameters, more readable
     graph: &UnGraph,
     // NodeIndex not label!!!
     u: usize,
@@ -135,7 +136,7 @@ fn dfs(
 /// </div>
 ///
 /// # Example
-/// TODO:
+/// TODO: read graph, draw it dfs, and block cut tree, assert something
 pub fn get_block_cut_tree(graph: &UnGraph) -> BlockCutTree {
     let graph_size = graph.node_count();
     let mut time = 0;
@@ -258,17 +259,21 @@ pub fn get_block_cut_tree(graph: &UnGraph) -> BlockCutTree {
 
 /// Output a skeleton of the block-cut tree in DOT format.
 /// Biconnected components (blocks) are represented as green nodes labeled B_i.
-/// Cut vertices are represented as red nodes (C_j) along with their real labels.
-pub fn draw_skeleton_of_block_cut_tree_dot(bct: &BlockCutTree) -> String {
+/// Cut vertices are represented as red nodes with their real labels.
+///
+/// Intended to use with `neato`.
+pub fn draw_skeleton_of_block_cut_tree(bct: &BlockCutTree) -> String {
     let mut output = String::from("graph {\n");
-    // it just works fot trees
-    output.push_str("rankdir=TD;\n");
-    output.push_str("node [style=filled];\n");
+    // It just works
+    output.push_str("  rankdir=TD;\n");
+    output.push_str("  mode=sgd;\n");
+    output.push_str("  maxiter=1000;\n");
+    output.push_str("  node [style=filled];\n");
 
     // Add block nodes (green, label B_i)
     for i in 0..bct.block_count {
         output.push_str(&format!(
-            "  block{} [label=\"B_{}\", fillcolor=lightgreen, fontcolor=black, shape=ellipse];\n",
+            "  block{} [label=\"B{}\", fillcolor=lightgreen, shape=box];\n",
             i, i
         ));
     }
@@ -278,8 +283,8 @@ pub fn draw_skeleton_of_block_cut_tree_dot(bct: &BlockCutTree) -> String {
         let idx = bct.block_count + i;
         let label = bct.graph.node_weight(NodeIndex::new(idx)).unwrap();
         output.push_str(&format!(
-            "  cut{} [label=\"C_{} ({})\", fillcolor=lightcoral, fontcolor=black, shape=box];\n",
-            idx, i, label
+            "  cut{} [label=\"{}\", fillcolor=lightcoral, shape=circle];\n",
+            idx, label
         ));
     }
 
@@ -291,17 +296,90 @@ pub fn draw_skeleton_of_block_cut_tree_dot(bct: &BlockCutTree) -> String {
         } else {
             format!("cut{}", a)
         };
+
         let b_str = if b < bct.block_count {
             format!("block{}", b)
         } else {
             format!("cut{}", b)
         };
-        output.push_str(&format!("  {} -- {};\n", a_str, b_str));
+
+        output.push_str(&format!("  {} -- {} [penwidth=2];\n", a_str, b_str));
     }
 
     output.push_str("}\n");
     output
 }
+
+/// It does almost exact same thing as `draw_skeleton_of_block_cut_tree`,
+/// but it expands blocks into subgraphs.
+///
+/// Intended to use with `neato`.
+pub fn draw_full_block_cut_tree(bct: &BlockCutTree) -> String {
+    let mut output = String::from("graph {\n");
+    // It just works for trees, draws without crossings
+    output.push_str("  rankdir=LR;\n");
+    output.push_str("  mode=sgd;\n");
+    output.push_str("  maxiter=1000;\n");
+    output.push_str("  node [style=filled, shape=circle];\n");
+
+    // Draw each block as a cluster (lightgreen cloud)
+    for (i, block) in bct.blocks.iter().enumerate() {
+        output.push_str(&format!("  subgraph cluster_{} {{\n", i));
+        output.push_str("    style=filled;\n    color=lightgreen;\n");
+        output.push_str("    node [color=lightblue];\n");
+        // Add vertices
+        for node in block.node_indices() {
+            let label = block.node_weight(node).unwrap();
+            output.push_str(&format!("    b_{}_{} [label=\"{}\"];\n", i, label, label));
+        }
+        // Add edges inside the block
+        for edge in block.edge_references() {
+            let (a, b) = (edge.source(), edge.target());
+            let (label_a, label_b) = (
+                block.node_weight(a).unwrap(),
+                block.node_weight(b).unwrap(),
+            );
+            output.push_str(&format!(
+                "    b_{}_{} -- b_{}_{};\n", i, label_a, i, label_b
+            ));
+        }
+        output.push_str("  }\n");
+    }
+
+    // Helper
+    let mut cut_vertices_labels = HashSet::new();
+
+    // Draw cut vertices as box nodes outside clusters
+    for i in 0..bct.cut_count {
+        let idx = bct.block_count + i;
+        let label = bct.graph.node_weight(NodeIndex::new(idx)).unwrap();
+        cut_vertices_labels.insert(*label);
+        output.push_str(&format!(
+            "  cut{} [label=\"{}\", fillcolor=lightcoral];\n",
+            label, label
+        ));
+    }
+
+    // Draw edges between blocks (cloned cut vertices) and cut vertices
+    for (i, block) in bct.blocks.iter().enumerate() {
+        for node in block.node_indices() {
+            let label = block.node_weight(node).unwrap();
+            if cut_vertices_labels.contains(label) {
+                // This is a cut vertex
+                output.push_str(&format!(
+                    "  b_{}_{} -- cut{} [style=dotted, penwidth=3];\n",
+                    i,
+                    label,
+                    label
+                ));
+            }
+        }
+    }
+
+    output.push_str("}\n");
+    output
+}
+
 #[cfg(test)]
 mod dfs_tests {
     use super::*;
