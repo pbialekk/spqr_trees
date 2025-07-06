@@ -12,11 +12,13 @@
 //! TODO: include papers
 
 pub mod block_cut;
+pub mod debugging;
 pub mod input;
 pub mod output;
 pub mod palm_tree;
 pub mod parallel_edges;
 pub mod reduce;
+pub mod tarjan;
 pub mod tsin;
 pub mod types;
 

@@ -5,6 +5,7 @@ edition = "2024"
 description = "SPQR tree construction based on petgraph library"
 
 [dependencies]
+dot = "0.1.4"
 embed-doc-image = "0.1.4"
 fixedbitset = "0.5.7"
 hashbrown = "0.15.3"
