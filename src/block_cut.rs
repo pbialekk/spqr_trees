@@ -1,9 +1,8 @@
-use crate::{EdgeLabel, UnGraph};
+use crate::{DFSEdgeLabel, EdgeLabel, UnGraph};
 use petgraph::graph::{EdgeIndex, NodeIndex};
 use petgraph::visit::{EdgeRef, NodeIndexable};
 use hashbrown::HashSet;
 use radsort;
-use fixedbitset::FixedBitSet;
 
 /// Represents the block-cut tree of a graph, containing blocks, cut vertices, and their relationships.
 #[derive(Debug, Clone)]
@@ -23,6 +22,10 @@ pub struct BlockCutTree {
     /// If node is a block, it will be mapped to its block id.
     /// This map goes from original graph internal indices to block-cut tree skeleton indices.
     pub node_to_id: Vec<usize>,
+    ///  Labels of edges
+    pub edge_labels: Vec<DFSEdgeLabel>,
+    /// Preorder
+    pub preorder: Vec<usize>,
 }
 
 impl BlockCutTree {}
@@ -46,7 +49,7 @@ fn dfs( // TODO: refactor this to take mut struct with parameters, more readable
     parent: Option<usize>,
     time: &mut usize,
     preorder: &mut [usize],
-    visited_edges: &mut FixedBitSet,
+    edge_labels: &mut [DFSEdgeLabel],
     edge_stack: &mut Vec<usize>,
     // block is defined by set of edges, this way we avoid problem with cut vertices multi membership
     blocks: &mut Vec<Vec<usize>>,
@@ -63,7 +66,7 @@ fn dfs( // TODO: refactor this to take mut struct with parameters, more readable
         let v = e.target().index();
         if preorder[v] == usize::MAX {
             // v is not visited yet
-            visited_edges.set(e.id().index(), true);
+            edge_labels[e.id().index()] = DFSEdgeLabel::Tree;
             children += 1;
 
             let stack_len = edge_stack.len();
@@ -75,7 +78,7 @@ fn dfs( // TODO: refactor this to take mut struct with parameters, more readable
                 Some(u),
                 time,
                 preorder,
-                visited_edges,
+                edge_labels,
                 edge_stack,
                 blocks,
                 is_cut,
@@ -92,10 +95,10 @@ fn dfs( // TODO: refactor this to take mut struct with parameters, more readable
                 blocks.push(block);
 
             }
-        } else if preorder[v] < preorder[u] && !visited_edges.contains(e.id().index()) {
+        } else if preorder[v] < preorder[u] && edge_labels[e.id().index()] == DFSEdgeLabel::Unvisited {
             // may be parallel edge or back edge
             edge_stack.push(e.id().index());
-            visited_edges.set(e.id().index(), true);
+            edge_labels[e.id().index()] = DFSEdgeLabel::Back;
             low = low.min(preorder[v]);
         }
 
@@ -117,6 +120,7 @@ fn dfs( // TODO: refactor this to take mut struct with parameters, more readable
 ///
 /// - We consider graph with one vertex and no edges as 1 biconnected component.
 /// - Graph must be connected, otherwise you will get  only first BC tree not the forest.
+/// - We are assuming that graph is simple. See `mod parallel_edges`.
 ///
 /// </div>
 ///
@@ -141,7 +145,7 @@ pub fn get_block_cut_tree(graph: &UnGraph) -> BlockCutTree {
     let graph_size = graph.node_count();
     let mut time = 0;
     let mut preorder = vec![usize::MAX; graph_size];
-    let mut visited_edges = FixedBitSet::with_capacity(graph.edge_count());
+    let mut edge_labels = vec![DFSEdgeLabel::Unvisited; graph.edge_count()];
     let mut edge_stack = Vec::with_capacity(graph.edge_count());
     let mut is_cut = vec![false; graph_size];
     let mut blocks = Vec::new();
@@ -153,6 +157,8 @@ pub fn get_block_cut_tree(graph: &UnGraph) -> BlockCutTree {
             blocks: vec![UnGraph::new_undirected()],
             graph: UnGraph::new_undirected(),
             node_to_id: vec![0],
+            edge_labels: vec![],
+            preorder: vec![0],
         };
 
         block_cut_tree.blocks[0].add_node(graph.node_weight(NodeIndex::new(0)).unwrap().clone());
@@ -167,7 +173,7 @@ pub fn get_block_cut_tree(graph: &UnGraph) -> BlockCutTree {
         None,
         &mut time,
         &mut preorder,
-        &mut visited_edges,
+        &mut edge_labels,
         &mut edge_stack,
         &mut blocks,
         &mut is_cut,
@@ -185,6 +191,8 @@ pub fn get_block_cut_tree(graph: &UnGraph) -> BlockCutTree {
         blocks: Vec::with_capacity(blocks.len()),
         graph: UnGraph::new_undirected(),
         node_to_id: vec![0; graph_size],
+        edge_labels: edge_labels,
+        preorder: preorder.clone(),
     };
 
     // Add blocks as nodes
@@ -265,7 +273,6 @@ pub fn get_block_cut_tree(graph: &UnGraph) -> BlockCutTree {
 pub fn draw_skeleton_of_block_cut_tree(bct: &BlockCutTree) -> String {
     let mut output = String::from("graph {\n");
     // It just works
-    output.push_str("  rankdir=TD;\n");
     output.push_str("  mode=sgd;\n");
     output.push_str("  maxiter=1000;\n");
     output.push_str("  node [style=filled];\n");
@@ -317,7 +324,6 @@ pub fn draw_skeleton_of_block_cut_tree(bct: &BlockCutTree) -> String {
 pub fn draw_full_block_cut_tree(bct: &BlockCutTree) -> String {
     let mut output = String::from("graph {\n");
     // It just works for trees, draws without crossings
-    output.push_str("  rankdir=LR;\n");
     output.push_str("  mode=sgd;\n");
     output.push_str("  maxiter=1000;\n");
     output.push_str("  node [style=filled, shape=circle];\n");
@@ -367,13 +373,70 @@ pub fn draw_full_block_cut_tree(bct: &BlockCutTree) -> String {
             if cut_vertices_labels.contains(label) {
                 // This is a cut vertex
                 output.push_str(&format!(
-                    "  b_{}_{} -- cut{} [style=dotted, penwidth=3];\n",
+                    "  b_{}_{} -- cut{} [style=dashed, penwidth=3];\n",
                     i,
                     label,
                     label
                 ));
             }
         }
+    }
+
+    output.push_str("}\n");
+    output
+}
+
+/// Draws the DFS tree and indicates cut vertices.
+///
+/// Tree edges are drawn in solid lines, back edges in dashed lines.
+///
+/// Cut vertices are colored red.
+///
+/// Intended to use with `dot`.
+pub fn draw_bc_tree_dfs(
+    graph: &UnGraph,
+    bc_tree: &BlockCutTree,
+) -> String {
+    let mut output = String::from("digraph {\n");
+    output.push_str("  rankdir=TD;\n");
+    output.push_str("  node [style=filled, shape=circle];\n");
+
+    for (i, node) in graph.node_indices().enumerate() {
+        let label = graph.node_weight(node).unwrap();
+        let color = if bc_tree.node_to_id[node.index()] < bc_tree.block_count {
+            "lightblue"
+        } else {
+            "lightcoral"
+        };
+        output.push_str(&format!(
+            "  {} [label=\"{}\", fillcolor={}];\n",
+            i, label, color
+        ));
+    }
+
+    // Add edges with labels
+    for edge in graph.edge_references() {
+        let (mut a, mut b) = (edge.source().index(), edge.target().index());
+        let label = bc_tree.edge_labels[edge.id().index()].clone();
+        let style = match label {
+            DFSEdgeLabel::Tree => {
+                if bc_tree.preorder[a] > bc_tree.preorder[b] {
+                    std::mem::swap(&mut a, &mut b);
+                }
+                "solid"
+            },
+            DFSEdgeLabel::Back => {
+                if bc_tree.preorder[a] < bc_tree.preorder[b] {
+                    std::mem::swap(&mut a, &mut b);
+                }
+                "dashed"
+            },
+            _ => "",
+        };
+        output.push_str(&format!(
+            "  {} -> {} [style={}];\n",
+            a, b, style
+        ));
     }
 
     output.push_str("}\n");
@@ -388,7 +451,7 @@ mod dfs_tests {
     fn run_dfs(g: &UnGraph, start: usize) -> (Vec<bool>, Vec<Vec<usize>>, Vec<usize>) {
         let mut time = 0;
         let mut preorder = vec![usize::MAX; g.node_count()];
-        let mut visited_edges = FixedBitSet::with_capacity(g.edge_count());
+        let mut edge_labels = vec![DFSEdgeLabel::Unvisited; g.edge_count()];
         let mut edge_stack = Vec::new();
         let mut blocks = Vec::new();
         let mut is_cut = vec![false; g.node_count()];
@@ -398,7 +461,7 @@ mod dfs_tests {
             None,
             &mut time,
             &mut preorder,
-            &mut visited_edges,
+            &mut edge_labels,
             &mut edge_stack,
             &mut blocks,
             &mut is_cut,

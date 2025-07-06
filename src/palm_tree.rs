@@ -1,4 +1,5 @@
 use crate::UnGraph;
+use crate::types::DFSEdgeLabel;
 use fixedbitset::FixedBitSet;
 use hashbrown::HashMap;
 use petgraph::visit::{EdgeRef, IntoNodeReferences, NodeIndexable, NodeRef};
@@ -30,7 +31,7 @@ pub fn get_palm_tree(g: &UnGraph) -> PalmTree {
 ///
 /// LOWS are ids that you gave to nodes in the graph. They are not discovery times.
 ///
-/// Tree edges are solid, back edges are dotted.
+/// Tree edges are solid, back edges are dashed.
 ///
 /// The root node is colored green.
 ///
@@ -89,7 +90,7 @@ pub fn draw_palm_tree(palm_tree: &PalmTree, g: &UnGraph) -> String {
         };
 
         let style = match label {
-            DFSEdgeLabel::Back => "style=\"dotted\"",
+            DFSEdgeLabel::Back => "style=dashed",
             _ => "",
         };
 
@@ -101,24 +102,6 @@ pub fn draw_palm_tree(palm_tree: &PalmTree, g: &UnGraph) -> String {
 
     dot_str.push_str("}\n");
     dot_str
-}
-
-/// Enum to mark edges in DFS tree.
-#[derive(Clone, PartialEq, Eq, Debug)]
-enum DFSEdgeLabel {
-    Unvisited,
-    Tree,
-    Back,
-}
-
-impl std::fmt::Display for DFSEdgeLabel {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        match self {
-            DFSEdgeLabel::Unvisited => write!(f, "Unvisited"),
-            DFSEdgeLabel::Tree => write!(f, "Tree"),
-            DFSEdgeLabel::Back => write!(f, "Back"),
-        }
-    }
 }
 
 /// This struct holds all information about the palm tree of the graph.

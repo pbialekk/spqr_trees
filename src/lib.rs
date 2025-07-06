@@ -21,4 +21,5 @@ pub mod tsin;
 pub mod types;
 
 pub use types::EdgeLabel;
+pub use types::DFSEdgeLabel;
 pub use types::UnGraph;
