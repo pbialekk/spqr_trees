@@ -97,7 +97,7 @@ fn dfs_1(
                 lowpt2[u] = lowpt2[u].min(lowpt1[to]);
             }
         } else if pre[to] < pre[u] {
-            // A back edge (upwards)
+            // A back edge (upwards), maybe to a parent (a multiedge)
 
             // Update lowpt1 and lowpt2
             if pre[to] < lowpt1[u] {
@@ -134,9 +134,8 @@ fn dfs_2(
 pub fn cos(mut adj: Vec<Vec<usize>>, mut edges: Vec<(usize, usize)>) {
     let n = adj.len();
     let m = edges.len();
-    // TODO: Step 0: handle multiedges (just cut them off into a new split component)
 
-    // Step 0.5: direct edges from parent to son, and delete edges from son to parent
+    // Step 0: direct edges from parent to son, and delete edges from son to parent
     {
         dfs_0(
             &mut adj,
