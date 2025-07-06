@@ -155,6 +155,7 @@ fn dfs_3(
         u: usize,
         to: usize,
         tstack: &mut Vec<(usize, usize, usize)>,
+        lowpt1: &[usize],
         subsz: &[usize],
         parent: &[Option<usize>],
     ) {
@@ -177,15 +178,15 @@ fn dfs_3(
             (max_h, last_b)
         }
 
-        let (max_h, last_b) = if Some(u) == parent[to] {
+        let (max_h, a, last_b) = if Some(u) == parent[to] {
             // A tree edge
-            (to + subsz[to] - 1, to)
+            (to + subsz[to] - 1, lowpt1[to], u)
         } else {
             // A back edge (upwards)
-            (u, u)
+            (u, to, u)
         };
         let (max_h, last_b) = pop_tstack(to, max_h, last_b, tstack);
-        tstack.push((max_h, to, last_b));
+        tstack.push((max_h, a, last_b));
     }
 
     fn type_1_check(
