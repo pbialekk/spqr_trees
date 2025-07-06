@@ -6,6 +6,7 @@ type EdgeId = usize;
 #[derive(Debug, Clone)]
 struct Edge {
     id: EdgeId,
+    id_internal: usize,
     source: Node,
     target: Node,
 }
@@ -44,7 +45,7 @@ impl<'a> Labeller<'a, Node, Edge> for Graph<'a> {
     }
 
     fn edge_label(&self, e: &Edge) -> dot::LabelText<'a> {
-        dot::LabelText::label(format!("{}", e.id))
+        dot::LabelText::label(format!("{}({})", e.id, e.id_internal))
     }
 }
 
@@ -84,10 +85,11 @@ pub fn draw(
     };
 
     for (v, eids) in adj.iter().enumerate() {
-        for &eid in eids {
-            let (u, v) = edges[eid];
+        for (i, eid) in eids.iter().enumerate() {
+            let (u, v) = edges[*eid];
             graph.edges.push(Edge {
-                id: eid,
+                id: *eid,
+                id_internal: i,
                 source: u,
                 target: v,
             });
