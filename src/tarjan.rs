@@ -201,8 +201,7 @@ fn dfs_3(
     ) {
         if lowpt2[to] >= u && lowpt1[to] < u && (parent[u] != Some(0) || remaining_tree_edges > 0) {
             // TODO: a new component
-            loop {
-                let &eid = estack.last().unwrap();
+            while let Some(&eid) = estack.last() {
                 let (x, y) = edges[eid];
 
                 // Check if neither x nor y is in the subtree rooted at 'to'
@@ -224,9 +223,7 @@ fn dfs_3(
         }
     }
 
-    fn type_2_check(to: usize) {
-        unimplemented!()
-    }
+    fn type_2_check(to: usize) {}
 
     fn ensure_highpoints(u: usize, tstack: &mut Vec<(usize, usize, usize)>, high: &[Vec<usize>]) {
         fn get_high(u: usize, high: &[Vec<usize>]) -> usize {
