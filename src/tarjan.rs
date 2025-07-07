@@ -77,7 +77,7 @@ fn dfs_1(
     subsz[u] = 1;
     *time += 1;
 
-    for to in adj[u].iter().map(|&eid| edges[eid].1) {
+    for (to, eid) in adj[u].iter().map(|&eid| (edges[eid].1, eid)) {
         if subsz[to] == 0 {
             parent[to] = Some(u);
 
@@ -107,7 +107,7 @@ fn dfs_1(
                 lowpt2[u] = lowpt2[u].min(pre[to]);
             }
 
-            high[to].push(u);
+            high[to].push(eid);
         }
     }
 }
@@ -171,9 +171,10 @@ fn dfs_3(
         assigned_vedge: &mut Vec<usize>,
         vedge: usize,
     ) {
+        println!("Removing edge {}: {:?}", eid, edges[eid]);
         let (u, to) = edges[eid];
-        deg[u] -= 1;
-        deg[to] -= 1;
+        deg[u] = deg[u].saturating_sub(1);
+        deg[to] = deg[to].saturating_sub(1);
         is_dead[eid] = true;
         assigned_vedge[eid] = vedge;
     }
@@ -188,6 +189,7 @@ fn dfs_3(
         assigned_vedge: &mut Vec<usize>,
         split_component: &mut SplitComponent,
     ) -> usize {
+        println!("Creating new virtual edge from {} to {}", u, to);
         let eid = edges.len();
         split_component.add_edge(eid);
 
@@ -356,18 +358,150 @@ fn dfs_3(
         }
     }
 
-    fn type_2_check(to: usize) {}
-
-    fn ensure_highpoints(u: usize, tstack: &mut Vec<(usize, usize, usize)>, high: &[Vec<usize>]) {
-        fn get_high(u: usize, high: &[Vec<usize>]) -> usize {
-            if high[u].is_empty() {
-                return 0;
+    fn type_2_check(
+        u: usize,
+        mut to: usize,
+        parent: &[Option<usize>],
+        estack: &mut Vec<usize>,
+        tstack: &mut Vec<(usize, usize, usize)>,
+        edges: &mut Vec<(usize, usize)>,
+        adj: &mut [Vec<usize>],
+        deg: &mut [usize],
+        is_dead: &mut Vec<bool>,
+        assigned_vedge: &mut Vec<usize>,
+        split_components: &mut Vec<SplitComponent>,
+    ) {
+        if u == 0 {
+            return;
+        }
+        // Pop from tstack while (a == u) or (deg[to] == 2 && adj[to][0] > to)
+        loop {
+            let mut first_ch = 0; // first child of 'to'
+            for i in 0..adj[to].len() {
+                let eid = adj[to][i];
+                let b_maybe = edges[adj[to][i]].1;
+                if is_dead[eid] {
+                    continue;
+                }
+                first_ch = b_maybe;
+                break;
             }
-            *high[u].last().unwrap()
+
+            let cond_1 = !tstack.is_empty() && tstack.last().unwrap().1 == u;
+            let cond_2 = deg[to] == 2 && first_ch > to;
+            if !(cond_1 || cond_2) {
+                break;
+            }
+            if let Some(&(h, a, b)) = tstack.last() {
+                if a == u && parent[b] == Some(a) {
+                    // no inner vertex exists, pop
+                    tstack.pop();
+                    continue;
+                }
+            }
+            let mut eab = None;
+
+            let mut vedge;
+            let mut c = SplitComponent::new();
+            if cond_2 {
+                let b = first_ch;
+                dbg!(format!("Type 2 split pair found: ({}, {})", u, b));
+                vedge = new_vedge(u, b, adj, edges, deg, is_dead, assigned_vedge, &mut c);
+                for i in 0..2 {
+                    let eid = estack.pop().unwrap();
+                    c.add_edge(eid);
+                    remove_edge(deg, edges, is_dead, eid, assigned_vedge, vedge);
+                }
+
+                if !estack.is_empty() {
+                    let &eid = estack.last().unwrap();
+                    let (x, y) = edges[eid];
+                    if x == u && y == b {
+                        eab = Some(eid);
+                        estack.pop();
+                    }
+                }
+
+                split_components.push(c);
+            } else {
+                let (h, a, b) = tstack.pop().unwrap();
+                dbg!(format!("Type 2 split pair found: ({}, {})", a, b));
+                vedge = new_vedge(a, b, adj, edges, deg, is_dead, assigned_vedge, &mut c);
+
+                while let Some(&eid) = estack.last() {
+                    let (x, y) = edges[eid];
+
+                    // Check if neither x nor y is in the subtree rooted at 'to'
+                    let x_in_subtree = a <= x && x <= h;
+                    let y_in_subtree = a <= y && y <= h;
+                    if x_in_subtree && y_in_subtree {
+                        if x == a && y == b {
+                            eab = Some(eid);
+                        } else {
+                            c.add_edge(eid);
+                            remove_edge(deg, edges, is_dead, eid, assigned_vedge, vedge);
+                        }
+                        estack.pop();
+                    } else {
+                        break;
+                    }
+                }
+
+                split_components.push(c);
+            }
+
+            // handle possible multiedge
+            if eab != None {
+                let mut c = SplitComponent::new();
+                let b = edges[vedge].1;
+
+                c.add_edge(vedge);
+                let vedge_for_c = new_vedge(u, b, adj, edges, deg, is_dead, assigned_vedge, &mut c);
+                remove_edge(deg, edges, is_dead, vedge, assigned_vedge, vedge_for_c);
+                c.add_edge(eab.unwrap());
+                remove_edge(
+                    deg,
+                    edges,
+                    is_dead,
+                    eab.unwrap(),
+                    assigned_vedge,
+                    vedge_for_c,
+                );
+                c.add_edge(vedge_for_c);
+                split_components.push(c);
+
+                vedge = vedge_for_c;
+            }
+            estack.push(vedge);
+            to = edges[vedge].1;
+        }
+    }
+
+    fn ensure_highpoints(
+        u: usize,
+        edges: &[(usize, usize)],
+        tstack: &mut Vec<(usize, usize, usize)>,
+        high: &mut [Vec<usize>],
+        is_dead: &mut Vec<bool>,
+    ) {
+        fn get_high(
+            u: usize,
+            high: &mut [Vec<usize>],
+            is_dead: &mut Vec<bool>,
+            edges: &[(usize, usize)],
+        ) -> usize {
+            while let Some(&eid) = high[u].last() {
+                if is_dead[eid] {
+                    high[u].pop();
+                } else {
+                    return edges[eid].1;
+                }
+            }
+            0 // If no high points are left, return 0
         }
 
         while let Some(&(h, a, b)) = tstack.last() {
-            if a != u && b != u && get_high(u, high) > h {
+            if a != u && b != u && get_high(u, high, is_dead, edges) > h {
                 tstack.pop();
             } else {
                 break;
@@ -431,7 +565,19 @@ fn dfs_3(
             }
             estack.push(e_push);
 
-            type_2_check(to);
+            type_2_check(
+                u,
+                to,
+                parent,
+                estack,
+                tstack,
+                edges,
+                adj,
+                deg,
+                is_dead,
+                assigned_vedge,
+                split_components,
+            );
             type_1_check(
                 u,
                 to,
@@ -450,7 +596,7 @@ fn dfs_3(
                 parent_eid,
             );
 
-            ensure_highpoints(u, tstack, high);
+            ensure_highpoints(u, edges, tstack, high, is_dead);
         } else {
             // A back edge (upwards)
             if Some(to) == parent[u] {
@@ -631,7 +777,30 @@ pub fn cos(mut adj: Vec<Vec<usize>>, mut edges: Vec<(usize, usize)>) {
             &mut assigned_vedge,
             m,
         );
-        dbg!(split_components);
-        // TODO: if estack is not empty, it's a new split component
+
+        if !estack.is_empty() {
+            let mut c = SplitComponent::new();
+            while let Some(eid) = estack.pop() {
+                c.add_edge(eid);
+            }
+            split_components.push(c);
+        }
+
+        for (i, c) in split_components.iter().enumerate() {
+            let mut vertex_set = vec![];
+            for &eid in &c.skeleton {
+                let (u, to) = edges[eid];
+                if !vertex_set.contains(&u) {
+                    vertex_set.push(u);
+                }
+                if !vertex_set.contains(&to) {
+                    vertex_set.push(to);
+                }
+            }
+            println!(
+                "Split component {}:\n  Vertices: {:?}\n  Edges: {:?}\n",
+                i, vertex_set, c.skeleton
+            );
+        }
     }
 }
