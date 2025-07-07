@@ -130,10 +130,27 @@ fn dfs_2(
     *time = time.saturating_sub(1);
 }
 
+#[derive(Debug)]
+struct SplitComponent {
+    skeleton: Vec<usize>,
+}
+impl SplitComponent {
+    fn new() -> Self {
+        SplitComponent {
+            skeleton: Vec::new(),
+        }
+    }
+    fn add_edge(&mut self, edge: usize) {
+        self.skeleton.push(edge);
+    }
+}
+
 fn dfs_3(
-    adj: &[Vec<usize>],
-    edges: &[(usize, usize)],
+    adj: &mut [Vec<usize>],
+    edges: &mut Vec<(usize, usize)>,
     u: usize,
+    parent_eid: &mut Option<usize>,
+    is_dead: &mut Vec<bool>,
     tstack: &mut Vec<(usize, usize, usize)>,
     estack: &mut Vec<usize>,
     high: &mut [Vec<usize>],
@@ -142,14 +159,45 @@ fn dfs_3(
     subsz: &[usize],
     parent: &[Option<usize>],
     deg: &mut [usize],
+    split_components: &mut Vec<SplitComponent>,
+    assigned_vedge: &mut Vec<usize>,
 ) {
-    let mut remaining_tree_edges = adj[u]
-        .iter()
-        .filter(|&&eid| {
-            let to = edges[eid].1;
-            Some(u) == parent[to]
-        })
-        .count();
+    fn remove_edge(
+        deg: &mut [usize],
+        edges: &[(usize, usize)],
+        is_dead: &mut Vec<bool>,
+        eid: usize,
+        assigned_vedge: &mut Vec<usize>,
+        vedge: usize,
+    ) {
+        let (u, to) = edges[eid];
+        deg[u] -= 1;
+        deg[to] -= 1;
+        is_dead[eid] = true;
+        assigned_vedge[eid] = vedge;
+    }
+
+    fn new_vedge(
+        u: usize,
+        to: usize,
+        adj: &mut [Vec<usize>],
+        edges: &mut Vec<(usize, usize)>,
+        deg: &mut [usize],
+        is_dead: &mut Vec<bool>,
+        assigned_vedge: &mut Vec<usize>,
+    ) -> usize {
+        let eid = edges.len();
+        edges.push((u, to));
+        adj[u].push(eid);
+
+        deg[u] += 1;
+        deg[to] += 1;
+
+        is_dead.push(false);
+        assigned_vedge.push(eid); // Initially, the virtual edge points to itself
+
+        eid
+    }
 
     fn update_tstack(
         u: usize,
@@ -195,12 +243,22 @@ fn dfs_3(
         lowpt2: &[usize],
         parent: &[Option<usize>],
         estack: &mut Vec<usize>,
-        edges: &[(usize, usize)],
+        edges: &mut Vec<(usize, usize)>,
         subsz: &[usize],
-        remaining_tree_edges: usize,
+        remaining_tedges: usize,
+        adj: &mut [Vec<usize>],
+        deg: &mut [usize],
+        is_dead: &mut Vec<bool>,
+        assigned_vedge: &mut Vec<usize>,
+        split_components: &mut Vec<SplitComponent>,
+        parent_eid: &mut Option<usize>,
     ) {
-        if lowpt2[to] >= u && lowpt1[to] < u && (parent[u] != Some(0) || remaining_tree_edges > 0) {
+        if lowpt2[to] >= u && lowpt1[to] < u && (parent[u] != Some(0) || remaining_tedges > 0) {
+            dbg!(format!("Type 1 split pair found: ({}, {})", lowpt1[to], u));
             // TODO: a new component
+            let mut c = SplitComponent::new();
+            let mut vedge = new_vedge(u, lowpt1[to], adj, edges, deg, is_dead, assigned_vedge);
+            c.add_edge(vedge);
             while let Some(&eid) = estack.last() {
                 let (x, y) = edges[eid];
 
@@ -213,12 +271,56 @@ fn dfs_3(
 
                 // This edge belongs to a new component, add it
                 estack.pop();
-
-                if Some(lowpt1[to]) != parent[u] {
-                    // push newly created virtual edge to the estack
-                } else {
-                    // our virtual edge points to parent -- we now have a multiedge, handle it as well
+                if is_dead[eid] {
+                    continue; // already removedx
                 }
+                c.add_edge(eid);
+                remove_edge(deg, edges, is_dead, eid, assigned_vedge, vedge);
+            }
+            split_components.push(c);
+
+            if !estack.is_empty() {
+                let &eid = estack.last().unwrap();
+                let (x, y) = edges[eid];
+                if x == u && y == lowpt1[to] {
+                    // vedge is a multiedge, handle it
+                    c = SplitComponent::new();
+
+                    let vedge_for_c =
+                        new_vedge(u, lowpt1[to], adj, edges, deg, is_dead, assigned_vedge);
+                    c.add_edge(vedge_for_c);
+
+                    c.add_edge(eid);
+                    remove_edge(deg, edges, is_dead, eid, assigned_vedge, vedge_for_c);
+                    c.add_edge(vedge);
+                    remove_edge(deg, edges, is_dead, vedge, assigned_vedge, vedge_for_c);
+
+                    vedge = vedge_for_c;
+
+                    estack.pop();
+                }
+            }
+
+            if Some(lowpt1[to]) != parent[u] {
+                // push newly created virtual edge to the estack
+                estack.push(vedge);
+            } else {
+                // our virtual edge points to parent -- we now have a multiedge, handle it as well
+                let mut c = SplitComponent::new();
+
+                c.add_edge(vedge);
+                vedge = new_vedge(lowpt1[to], u, adj, edges, deg, is_dead, assigned_vedge);
+                c.add_edge(parent_eid.unwrap());
+                remove_edge(
+                    deg,
+                    edges,
+                    is_dead,
+                    parent_eid.unwrap(),
+                    assigned_vedge,
+                    vedge,
+                );
+
+                *parent_eid = Some(vedge);
             }
         }
     }
@@ -242,28 +344,59 @@ fn dfs_3(
         }
     }
 
-    for (to, eid) in adj[u].iter().map(|&eid| (edges[eid].1, eid)) {
+    let mut remaining_tedges = {
+        adj[u]
+            .iter()
+            .filter(|&&eid| {
+                let (from, to) = edges[eid];
+                parent[to] == Some(from)
+            })
+            .count()
+    };
+
+    let mut i = 0;
+    while i < adj[u].len() {
+        let (eid, to) = {
+            let eid = adj[u][i];
+            (eid, edges[eid].1)
+        };
+        if is_dead[eid] {
+            // removed edge
+            i += 1;
+            continue;
+        }
+
         let starts_path = eid != adj[u][0];
         if starts_path {
             update_tstack(u, to, tstack, lowpt1, subsz, parent);
         }
-        if Some(u) == parent[to] {
-            // A tree edge
-            remaining_tree_edges -= 1;
-            let mut empty_vec = Vec::new();
-            dfs_3(
-                adj,
-                edges,
-                to,
-                if starts_path { &mut empty_vec } else { tstack },
-                estack,
-                high,
-                lowpt1,
-                lowpt2,
-                subsz,
-                parent,
-                deg,
-            );
+        if Some(u) == parent[to] || u < to {
+            // A tree edge or a downwards virtual edge
+            if Some(u) == parent[to] {
+                remaining_tedges = remaining_tedges.saturating_sub(1);
+                let mut empty_vec = Vec::new();
+                dfs_3(
+                    adj,
+                    edges,
+                    to,
+                    &mut Some(eid),
+                    is_dead,
+                    if starts_path { &mut empty_vec } else { tstack },
+                    estack,
+                    high,
+                    lowpt1,
+                    lowpt2,
+                    subsz,
+                    parent,
+                    deg,
+                    split_components,
+                    assigned_vedge,
+                );
+            }
+            let mut e_push = eid;
+            while is_dead[e_push] {
+                e_push = assigned_vedge[e_push];
+            }
             estack.push(eid);
 
             type_2_check(to);
@@ -276,19 +409,36 @@ fn dfs_3(
                 estack,
                 edges,
                 subsz,
-                remaining_tree_edges,
+                remaining_tedges,
+                adj,
+                deg,
+                is_dead,
+                assigned_vedge,
+                split_components,
+                parent_eid,
             );
 
             ensure_highpoints(u, tstack, high);
         } else {
             // A back edge (upwards)
             if Some(to) == parent[u] {
-                // TODO
                 // A multiedge to a parent, new split component
+                let e = new_vedge(to, u, adj, edges, deg, is_dead, assigned_vedge);
+                let mut c = SplitComponent::new();
+
+                c.add_edge(eid);
+                remove_edge(deg, edges, is_dead, eid, assigned_vedge, e);
+
+                c.add_edge(parent_eid.unwrap());
+                remove_edge(deg, edges, is_dead, parent_eid.unwrap(), assigned_vedge, e);
+
+                split_components.push(c);
             } else {
                 estack.push(eid);
             }
         }
+
+        i += 1;
     }
 }
 
@@ -423,10 +573,20 @@ pub fn cos(mut adj: Vec<Vec<usize>>, mut edges: Vec<(usize, usize)>) {
         let mut tstack = vec![];
         let mut estack = vec![];
         let mut deg = vec![0; n];
+        let mut split_components = vec![];
+        let mut is_dead = vec![false; m];
+        let mut assigned_vedge = vec![0; m];
+        for &(u, to) in edges.iter() {
+            deg[u] += 1;
+            deg[to] += 1;
+        }
+
         dfs_3(
-            &adj,
-            &edges,
+            &mut adj,
+            &mut edges,
             0,
+            &mut None,
+            &mut is_dead,
             &mut tstack,
             &mut estack,
             &mut high,
@@ -435,7 +595,10 @@ pub fn cos(mut adj: Vec<Vec<usize>>, mut edges: Vec<(usize, usize)>) {
             &subsz,
             &parent,
             &mut deg,
+            &mut split_components,
+            &mut assigned_vedge,
         );
+        dbg!(split_components);
         // TODO: if estack is not empty, it's a new split component
     }
 }
