@@ -1,4 +1,4 @@
-use crate::debugging::draw;
+use crate::debugging::{self, draw};
 use std::mem::swap;
 
 /// Reference: https://epubs.siam.org/doi/10.1137/0202012
@@ -161,6 +161,7 @@ fn dfs_3(
     deg: &mut [usize],
     split_components: &mut Vec<SplitComponent>,
     assigned_vedge: &mut Vec<usize>,
+    normal_edge_count: usize,
 ) {
     fn remove_edge(
         deg: &mut [usize],
@@ -258,7 +259,6 @@ fn dfs_3(
     ) {
         if lowpt2[to] >= u && lowpt1[to] < u && (parent[u] != Some(0) || remaining_tedges > 0) {
             dbg!(format!("Type 1 split pair found: ({}, {})", lowpt1[to], u));
-            // TODO: a new component
             let mut c = SplitComponent::new();
             let mut vedge = new_vedge(
                 u,
@@ -311,6 +311,7 @@ fn dfs_3(
                     remove_edge(deg, edges, is_dead, vedge, assigned_vedge, vedge_for_c);
                     c.add_edge(eid);
                     remove_edge(deg, edges, is_dead, eid, assigned_vedge, vedge_for_c);
+                    split_components.push(c);
 
                     vedge = vedge_for_c;
 
@@ -319,7 +320,7 @@ fn dfs_3(
             }
 
             if Some(lowpt1[to]) != parent[u] {
-                // push newly created virtual edge to the estack
+                // push newly created virtual edge to the estack (it should happen in the dfs loop, but now our edges are not sorted)
                 estack.push(vedge);
             } else {
                 // our virtual edge points to parent -- we now have a multiedge, handle it as well
@@ -346,6 +347,7 @@ fn dfs_3(
                     assigned_vedge,
                     vedge_for_c,
                 );
+                split_components.push(c);
 
                 vedge = vedge_for_c;
 
@@ -395,7 +397,7 @@ fn dfs_3(
             continue;
         }
 
-        let starts_path = eid != adj[u][0];
+        let starts_path = eid != adj[u][0] && eid < normal_edge_count;
         if starts_path {
             update_tstack(u, to, tstack, lowpt1, subsz, parent);
         }
@@ -420,13 +422,14 @@ fn dfs_3(
                     deg,
                     split_components,
                     assigned_vedge,
+                    normal_edge_count,
                 );
             }
             let mut e_push = eid;
             while is_dead[e_push] {
                 e_push = assigned_vedge[e_push];
             }
-            estack.push(eid);
+            estack.push(e_push);
 
             type_2_check(to);
             type_1_check(
@@ -462,7 +465,8 @@ fn dfs_3(
                 remove_edge(deg, edges, is_dead, parent_eid.unwrap(), assigned_vedge, e);
 
                 split_components.push(c);
-            } else {
+            } else if eid < normal_edge_count {
+                // not a upward vedge (it was pushed inside type_x_check already)
                 estack.push(eid);
             }
         }
@@ -594,7 +598,6 @@ pub fn cos(mut adj: Vec<Vec<usize>>, mut edges: Vec<(usize, usize)>) {
             v.reverse(); // highest point is the last in the list, so we can pop it easily
         }
     }
-
     println!("{}", draw(&adj, &edges, &lowpt1, &lowpt2, &parent, &subsz));
 
     // Step 4: finding the split components. Linked paper provides an ''easy'' conditions for a pair of vertices to be a split pair. The margin here is too narrow to explain it, so I encourage you to read https://www.inf.uni-konstanz.de/exalgo/members/mader/thesis.pdf pages 20-21. (It has a nice drawings too!) Page 13 contains the definition of a type-1/2 split pair.
@@ -626,6 +629,7 @@ pub fn cos(mut adj: Vec<Vec<usize>>, mut edges: Vec<(usize, usize)>) {
             &mut deg,
             &mut split_components,
             &mut assigned_vedge,
+            m,
         );
         dbg!(split_components);
         // TODO: if estack is not empty, it's a new split component
