@@ -185,8 +185,11 @@ fn dfs_3(
         deg: &mut [usize],
         is_dead: &mut Vec<bool>,
         assigned_vedge: &mut Vec<usize>,
+        split_component: &mut SplitComponent,
     ) -> usize {
         let eid = edges.len();
+        split_component.add_edge(eid);
+
         edges.push((u, to));
         adj[u].push(eid);
 
@@ -257,8 +260,16 @@ fn dfs_3(
             dbg!(format!("Type 1 split pair found: ({}, {})", lowpt1[to], u));
             // TODO: a new component
             let mut c = SplitComponent::new();
-            let mut vedge = new_vedge(u, lowpt1[to], adj, edges, deg, is_dead, assigned_vedge);
-            c.add_edge(vedge);
+            let mut vedge = new_vedge(
+                u,
+                lowpt1[to],
+                adj,
+                edges,
+                deg,
+                is_dead,
+                assigned_vedge,
+                &mut c,
+            );
             while let Some(&eid) = estack.last() {
                 let (x, y) = edges[eid];
 
@@ -286,14 +297,20 @@ fn dfs_3(
                     // vedge is a multiedge, handle it
                     c = SplitComponent::new();
 
-                    let vedge_for_c =
-                        new_vedge(u, lowpt1[to], adj, edges, deg, is_dead, assigned_vedge);
-                    c.add_edge(vedge_for_c);
-
-                    c.add_edge(eid);
-                    remove_edge(deg, edges, is_dead, eid, assigned_vedge, vedge_for_c);
+                    let vedge_for_c = new_vedge(
+                        u,
+                        lowpt1[to],
+                        adj,
+                        edges,
+                        deg,
+                        is_dead,
+                        assigned_vedge,
+                        &mut c,
+                    );
                     c.add_edge(vedge);
                     remove_edge(deg, edges, is_dead, vedge, assigned_vedge, vedge_for_c);
+                    c.add_edge(eid);
+                    remove_edge(deg, edges, is_dead, eid, assigned_vedge, vedge_for_c);
 
                     vedge = vedge_for_c;
 
@@ -308,8 +325,18 @@ fn dfs_3(
                 // our virtual edge points to parent -- we now have a multiedge, handle it as well
                 let mut c = SplitComponent::new();
 
+                let vedge_for_c = new_vedge(
+                    lowpt1[to],
+                    u,
+                    adj,
+                    edges,
+                    deg,
+                    is_dead,
+                    assigned_vedge,
+                    &mut c,
+                );
                 c.add_edge(vedge);
-                vedge = new_vedge(lowpt1[to], u, adj, edges, deg, is_dead, assigned_vedge);
+                remove_edge(deg, edges, is_dead, vedge, assigned_vedge, vedge_for_c);
                 c.add_edge(parent_eid.unwrap());
                 remove_edge(
                     deg,
@@ -317,8 +344,10 @@ fn dfs_3(
                     is_dead,
                     parent_eid.unwrap(),
                     assigned_vedge,
-                    vedge,
+                    vedge_for_c,
                 );
+
+                vedge = vedge_for_c;
 
                 *parent_eid = Some(vedge);
             }
@@ -423,8 +452,8 @@ fn dfs_3(
             // A back edge (upwards)
             if Some(to) == parent[u] {
                 // A multiedge to a parent, new split component
-                let e = new_vedge(to, u, adj, edges, deg, is_dead, assigned_vedge);
                 let mut c = SplitComponent::new();
+                let e = new_vedge(to, u, adj, edges, deg, is_dead, assigned_vedge, &mut c);
 
                 c.add_edge(eid);
                 remove_edge(deg, edges, is_dead, eid, assigned_vedge, e);
