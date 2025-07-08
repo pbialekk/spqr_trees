@@ -190,6 +190,7 @@ fn dfs_3(
         assigned_vedge: &mut Vec<usize>,
         split_component: &mut SplitComponent,
         is_tedge: &mut Vec<bool>,
+        high: &mut [Vec<usize>],
     ) -> usize {
         println!("Creating new virtual edge from {} to {}", u, to);
         let eid = edges.len();
@@ -204,6 +205,11 @@ fn dfs_3(
         is_dead.push(false);
         is_tedge.push(false); // This is a virtual edge, not a tree edge
         assigned_vedge.push(eid); // Initially, the virtual edge points to itself
+
+        if to < u {
+            // back edge
+            high[to].push(eid);
+        }
 
         eid
     }
@@ -262,6 +268,7 @@ fn dfs_3(
         split_components: &mut Vec<SplitComponent>,
         parent_eid: &mut Option<usize>,
         is_tedge: &mut Vec<bool>,
+        high: &mut [Vec<usize>],
     ) {
         if lowpt2[to] >= u && lowpt1[to] < u && (parent[u] != Some(0) || remaining_tedges > 0) {
             dbg!(format!("Type 1 split pair found: ({}, {})", lowpt1[to], u));
@@ -276,6 +283,7 @@ fn dfs_3(
                 assigned_vedge,
                 &mut c,
                 is_tedge,
+                high,
             );
             while let Some(&eid) = estack.last() {
                 let (x, y) = edges[eid];
@@ -314,6 +322,7 @@ fn dfs_3(
                         assigned_vedge,
                         &mut c,
                         is_tedge,
+                        high,
                     );
                     c.add_edge(vedge);
                     remove_edge(deg, edges, is_dead, vedge, assigned_vedge, vedge_for_c);
@@ -345,6 +354,7 @@ fn dfs_3(
                     assigned_vedge,
                     &mut c,
                     is_tedge,
+                    high,
                 );
                 c.add_edge(vedge);
                 remove_edge(deg, edges, is_dead, vedge, assigned_vedge, vedge_for_c);
@@ -386,6 +396,7 @@ fn dfs_3(
         assigned_vedge: &mut Vec<usize>,
         split_components: &mut Vec<SplitComponent>,
         is_tedge: &mut Vec<bool>,
+        high: &mut [Vec<usize>],
     ) {
         loop {
             let mut first_ch = 0; // first child of 'to'
@@ -428,6 +439,7 @@ fn dfs_3(
                     assigned_vedge,
                     &mut c,
                     is_tedge,
+                    high,
                 );
                 for i in 0..2 {
                     let eid = estack.pop().unwrap();
@@ -458,6 +470,7 @@ fn dfs_3(
                     assigned_vedge,
                     &mut c,
                     is_tedge,
+                    high,
                 );
 
                 while let Some(&eid) = estack.last() {
@@ -498,6 +511,7 @@ fn dfs_3(
                     assigned_vedge,
                     &mut c,
                     is_tedge,
+                    high,
                 );
                 remove_edge(deg, edges, is_dead, vedge, assigned_vedge, vedge_for_c);
                 c.add_edge(eab.unwrap());
@@ -538,7 +552,7 @@ fn dfs_3(
                     high[u].pop();
                     dbg!("Pop dead hp");
                 } else {
-                    return edges[eid].1;
+                    return edges[eid].0;
                 }
             }
             0 // If no high points are left, return 0
@@ -621,6 +635,7 @@ fn dfs_3(
                 assigned_vedge,
                 split_components,
                 is_tedge,
+                high,
             );
             type_1_check(
                 u,
@@ -639,6 +654,7 @@ fn dfs_3(
                 split_components,
                 parent_eid,
                 is_tedge,
+                high,
             );
 
             ensure_highpoints(u, edges, tstack, high, is_dead);
@@ -657,6 +673,7 @@ fn dfs_3(
                     assigned_vedge,
                     &mut c,
                     is_tedge,
+                    high,
                 );
 
                 c.add_edge(eid);
