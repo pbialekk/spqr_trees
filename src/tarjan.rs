@@ -379,6 +379,7 @@ fn dfs_3(
                 swap(&mut edge.0, &mut edge.1);
                 adj[lowpt1[to]].push(vedge);
                 adj[u].pop();
+                high[lowpt1[to]].push(vedge);
             }
         }
     }
@@ -577,6 +578,17 @@ fn dfs_3(
             .count()
     };
 
+    let first_non_parent = {
+        let mut first_non_parent = None;
+        for &eid in &adj[u] {
+            if Some(edges[eid].1) != parent[u] {
+                first_non_parent = Some(eid);
+                break;
+            }
+        }
+        first_non_parent.unwrap()
+    };
+
     let mut i = 0;
     while i < adj[u].len() {
         let (eid, to) = {
@@ -589,7 +601,7 @@ fn dfs_3(
             continue;
         }
 
-        let starts_path = eid != adj[u][0];
+        let starts_path = eid != first_non_parent;
         if starts_path {
             update_tstack(u, to, tstack, lowpt1, subsz, parent);
         }
