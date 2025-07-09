@@ -105,6 +105,8 @@ impl GraphInternal {
         self.edge_type.push(put_type);
         self.adj[s].push(eid);
         self.starts_path.push(false);
+        self.deg[s] += 1;
+        self.deg[t] += 1;
 
         eid
     }
@@ -137,6 +139,22 @@ impl GraphInternal {
         self.par_edge[t] = Some(eid);
         self.par[t] = Some(s);
     }
+    fn make_bedge(&mut self, eid: usize) {
+        if cfg!(debug_assertions) {
+            println!(
+                "Making edge {} a back edge: ({}, {})",
+                eid, self.edges[eid].0, self.edges[eid].1
+            );
+        }
+
+        self.edge_type[eid] = Some(EdgeType::Back);
+        let (s, t) = self.edges[eid];
+
+        self.deg[s] += 1;
+        self.deg[t] += 1;
+
+        self.high[t].push(eid);
+    }
     fn get_other(&self, eid: usize, u: usize) -> usize {
         let (s, t) = self.edges[eid];
         if s == u { t } else { s }
@@ -158,6 +176,7 @@ impl GraphInternal {
 fn find_split(
     root: usize,
     u: usize,
+    vedges_cutoff: usize,
     graph: &mut GraphInternal,
     estack: &mut Vec<usize>,
     tstack: &mut Vec<(usize, usize, usize)>,
@@ -346,12 +365,13 @@ fn find_split(
             if eab != usize::MAX {
                 let mut component = Component::new(Some(ComponentType::P));
                 component.push_edge(eab);
+                graph.kill_edge(eab);
+
                 component.push_edge(evirt);
+                graph.kill_edge(evirt);
 
                 evirt = graph.new_edge(u, to, None);
                 component.push_edge(evirt);
-
-                graph.kill_edge(eab);
             }
 
             estack.push(evirt);
@@ -362,19 +382,100 @@ fn find_split(
         root: usize,
         u: usize,
         to: usize,
-        tstack: &mut Vec<(usize, usize, usize)>,
         estack: &mut Vec<usize>,
         graph: &mut GraphInternal,
         split_components: &mut Vec<Component>,
+        t_edges_left: usize,
     ) {
+        if graph.low2[to] >= graph.num[u]
+            && graph.low1[to] < graph.num[u]
+            && (Some(root) != graph.par[u] || t_edges_left != 0)
+        {
+            if cfg!(debug_assertions) {
+                println!("Type 1 pair found ({}, {})", graph.low1[to], u);
+            }
+
+            let mut component = Component::new(None);
+            while let Some(&eid) = estack.last() {
+                let (x, y) = graph.edges[eid];
+                let x_in_subtree =
+                    graph.num[to] <= graph.num[x] && graph.num[x] < graph.num[to] + graph.sub[to];
+                let y_in_subtree =
+                    graph.num[to] <= graph.num[y] && graph.num[y] < graph.num[to] + graph.sub[to];
+
+                if !(x_in_subtree || y_in_subtree) {
+                    break;
+                }
+
+                estack.pop();
+
+                component.push_edge(eid);
+                graph.kill_edge(eid);
+            }
+
+            let mut evirt = graph.new_edge(u, graph.numrev[graph.low1[to]], None);
+            component.push_edge(evirt);
+
+            component.commit(split_components);
+
+            if let Some(&eid) = estack.last() {
+                let (x, y) = graph.edges[eid];
+                if (x == u && y == graph.numrev[graph.low1[to]])
+                    || (y == u && x == graph.numrev[graph.low1[to]])
+                {
+                    estack.pop();
+                    let mut component = Component::new(Some(ComponentType::P));
+
+                    component.push_edge(eid);
+                    graph.kill_edge(eid);
+
+                    component.push_edge(evirt);
+                    graph.kill_edge(evirt);
+
+                    evirt = graph.new_edge(u, graph.numrev[graph.low1[to]], None);
+                    component.push_edge(evirt);
+
+                    component.commit(split_components);
+                }
+            }
+
+            if Some(graph.numrev[graph.low1[to]]) != graph.par[u] {
+                estack.push(evirt);
+                graph.make_bedge(evirt);
+            } else {
+                let parent_edge = graph.par_edge[u].unwrap();
+
+                let mut component = Component::new(Some(ComponentType::P));
+
+                component.push_edge(parent_edge);
+                graph.kill_edge(parent_edge);
+
+                component.push_edge(evirt);
+                graph.kill_edge(evirt);
+
+                evirt = graph.new_edge(graph.par[u].unwrap(), u, None);
+                component.push_edge(evirt);
+
+                component.commit(split_components);
+
+                graph.make_tedge(evirt);
+                graph.par_edge[u] = Some(evirt);
+            }
+        }
     }
+
+    let mut adjacent_tedges = graph.adj[u]
+        .iter()
+        .filter(|&eid| graph.edge_type[*eid] == Some(EdgeType::Tree))
+        .count();
 
     let mut i = 0;
     while i < graph.adj[u].len() {
         let eid = graph.adj[u][i];
-        if graph.edge_type[eid] == Some(EdgeType::Killed) {
+        if graph.edge_type[eid] == Some(EdgeType::Killed) || eid >= vedges_cutoff {
+            // we don't care about killer nor virtual edges here
             i += 1;
-            continue; // skip killed edges
+            continue;
         }
 
         let to = graph.get_other(eid, u);
@@ -387,6 +488,7 @@ fn find_split(
             find_split(
                 root,
                 to,
+                vedges_cutoff,
                 graph,
                 estack,
                 if graph.starts_path[eid] {
@@ -396,15 +498,25 @@ fn find_split(
                 },
                 split_components,
             );
+            adjacent_tedges -= 1;
 
             let push_eid = graph.par_edge[to].unwrap(); // eid could be killed by the multiple edge case in check_type_x
             estack.push(push_eid);
 
             check_type_2(root, u, to, tstack, estack, graph, split_components);
-            check_type_1(root, u, to, tstack, estack, graph, split_components);
+            check_type_1(
+                root,
+                u,
+                to,
+                estack,
+                graph,
+                split_components,
+                adjacent_tedges,
+            );
 
             ensure_highpoint(u, tstack, graph);
         } else {
+            estack.push(eid);
         }
 
         i += 1;
@@ -761,6 +873,7 @@ pub fn get_triconnected_components(in_graph: &UnGraph) -> Vec<Component> {
         find_split(
             root,
             root,
+            graph.edges.len(),
             &mut graph,
             &mut estack,
             &mut tstack,
