@@ -206,11 +206,6 @@ fn dfs_3(
         is_tedge.push(false); // This is a virtual edge, not a tree edge
         assigned_vedge.push(eid); // Initially, the virtual edge points to itself
 
-        if to < u {
-            // back edge
-            high[to].push(eid);
-        }
-
         eid
     }
 
@@ -230,6 +225,7 @@ fn dfs_3(
         ) -> (usize, usize, usize) {
             while let Some(&(h, a, b)) = tstack.last() {
                 if a > cutoff {
+                    println!("Popping tstack: ({}, {}, {})", h, a, b);
                     tstack.pop();
                     max_h = h.max(max_h);
                     last_b = b;
@@ -271,7 +267,7 @@ fn dfs_3(
         high: &mut [Vec<usize>],
     ) {
         if lowpt2[to] >= u && lowpt1[to] < u && (parent[u] != Some(0) || remaining_tedges > 0) {
-            dbg!(format!("Type 1 split pair found: ({}, {})", lowpt1[to], u));
+            println!("Type 1 split pair found: ({}, {})", lowpt1[to], u);
             let mut c = SplitComponent::new();
             let mut vedge = new_vedge(
                 u,
@@ -339,7 +335,7 @@ fn dfs_3(
             if Some(lowpt1[to]) != parent[u] {
                 // push newly created virtual edge to the estack (it should happen in the dfs loop, but now our edges are not sorted)
                 estack.push(vedge);
-                dbg!(format!("Pushing new virtual edge {} to estack", vedge));
+                println!("Pushing new virtual edge {} to estack", vedge);
             } else {
                 // our virtual edge points to parent -- we now have a multiedge, handle it as well
                 let mut c = SplitComponent::new();
@@ -374,13 +370,12 @@ fn dfs_3(
                 *parent_eid = Some(vedge);
             }
 
-            if edges[vedge].0 == u {
-                let edge = &mut edges[vedge];
-                swap(&mut edge.0, &mut edge.1);
-                adj[lowpt1[to]].push(vedge);
-                adj[u].pop();
-                high[lowpt1[to]].push(vedge);
-            }
+            // if edges[vedge].0 == u { this is needed only for merging the split components later...?
+            //     let edge = &mut edges[vedge];
+            //     swap(&mut edge.0, &mut edge.1);
+            //     adj[lowpt1[to]].push(vedge);
+            //     adj[u].pop();
+            // }
         }
     }
 
@@ -423,13 +418,13 @@ fn dfs_3(
                     continue;
                 }
             }
-            let mut eab = None;
 
+            let mut eab = None;
             let mut vedge;
             let mut c = SplitComponent::new();
             if cond_2 {
                 let b = first_ch;
-                dbg!(format!("Type 2 split pair found: ({}, {})", u, b));
+                println!("Type 2 split pair found: ({}, {})", u, b);
                 vedge = new_vedge(
                     u,
                     b,
@@ -449,6 +444,7 @@ fn dfs_3(
                 }
 
                 if !estack.is_empty() {
+                    // chcek for multiedge
                     let &eid = estack.last().unwrap();
                     let (x, y) = edges[eid];
                     if x == u && y == b {
@@ -460,7 +456,7 @@ fn dfs_3(
                 split_components.push(c);
             } else {
                 let (h, a, b) = tstack.pop().unwrap();
-                dbg!(format!("Type 2 split pair found: ({}, {})", a, b));
+                println!("Type 2 split pair found: ({}, {})", a, b);
                 vedge = new_vedge(
                     a,
                     b,
@@ -551,7 +547,7 @@ fn dfs_3(
             while let Some(&eid) = high[u].last() {
                 if is_dead[eid] {
                     high[u].pop();
-                    dbg!("Pop dead hp");
+                    println!("Pop dead hp");
                 } else {
                     return edges[eid].0;
                 }
@@ -561,6 +557,7 @@ fn dfs_3(
 
         while let Some(&(h, a, b)) = tstack.last() {
             if a != u && b != u && get_high(u, high, is_dead, edges) > h {
+                println!("Popping tstack: ({}, {}, {})", h, a, b);
                 tstack.pop();
             } else {
                 break;
@@ -632,7 +629,7 @@ fn dfs_3(
                 e_push = assigned_vedge[e_push];
             }
             estack.push(e_push);
-            dbg!(eid, e_push);
+            println!("pushing {}({})", eid, e_push);
 
             type_2_check(
                 u,
