@@ -14,7 +14,7 @@ pub enum EdgeType {
     Killed,
 }
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, PartialEq)]
 pub enum ComponentType {
     P, // bond
     S, // triangle
@@ -23,8 +23,8 @@ pub enum ComponentType {
 
 #[derive(Debug, Clone)]
 pub struct Component {
-    edges: Vec<usize>,
-    component_type: Option<ComponentType>,
+    pub edges: Vec<usize>,
+    pub component_type: Option<ComponentType>,
 }
 
 impl Component {
@@ -320,10 +320,9 @@ fn find_split(
                 component.commit(split_components);
 
                 if let Some(&e) = estack.last() {
-                    if graph.edges[e].0 == u && graph.edges[e].1 == to {
+                    if graph.edges[e] == (to, u) {
                         // a multiedge, it can't happen that .0 == to and .1 == u since that'd make a type-1 pair at 'to'
                         eab = estack.pop().unwrap();
-                        graph.kill_edge(eab);
                     }
                 }
             } else {
@@ -888,22 +887,106 @@ pub fn get_triconnected_components(in_graph: &UnGraph) -> Vec<Component> {
             &mut split_components,
         );
 
-        if !estack.is_empty() {
-            let mut component = Component::new(None);
-            while let Some(eid) = estack.pop() {
-                component.push_edge(eid);
-                graph.edge_type[eid] = Some(EdgeType::Killed);
+        let mut component = Component::new(None);
+        while let Some(eid) = estack.pop() {
+            component.push_edge(eid);
+            graph.edge_type[eid] = Some(EdgeType::Killed);
+        }
+        component.commit(&mut split_components);
+
+        if cfg!(debug_assertions) {
+            println!("eid\t (s, t)\t edge_type\t starts_path");
+            for eid in 0..graph.edges.len() {
+                let (s, t) = graph.edges[eid];
+                println!(
+                    "{}:\t ({}, {})\t{:?}\t {}",
+                    eid, s, t, graph.edge_type[eid], graph.starts_path[eid]
+                );
             }
-            component.commit(&mut split_components);
+
+            println!("Split components found:");
+            for (i, component) in split_components.iter().enumerate() {
+                println!(
+                    "Component {}: type: {:?}, edges: {:?}",
+                    i, component.component_type, component.edges
+                );
+            }
         }
 
-        dbg!(&split_components);
-    }
+        // merge S and P nodes
+        {
+            let mut final_components = vec![];
 
-    // merge S and P nodes
-    {
-        // TODO
-    }
+            let mut pos = vec![0; graph.edges.len()];
+            let XD_split_components = split_components.clone();
 
-    split_components
+            for (i, component) in split_components.iter().enumerate() {
+                for &eid in component.edges.iter() {
+                    pos[eid] = i; // vedges occur twice
+                }
+            }
+
+            // TODO: make it faster, maybe use linked lists? xd
+            let mut dead = vec![false; split_components.len()];
+            for (i, component) in split_components.iter().enumerate() {
+                if component.component_type == Some(ComponentType::R) {
+                    final_components.push(component.clone());
+                    continue; // tcc 
+                }
+                if dead[i] {
+                    continue; // already dead
+                }
+
+                let mut new_component = component.clone();
+                let mut j = 0;
+
+                while j < new_component.edges.len() {
+                    let eid = new_component.edges[j];
+                    if pos[eid] != i {
+                        let guy = pos[eid];
+
+                        let guy_component = &XD_split_components[guy];
+
+                        if !dead[guy] && guy_component.component_type == component.component_type {
+                            dead[guy] = true;
+                            new_component
+                                .edges
+                                .extend(guy_component.edges.iter().filter(|&&e| e != eid));
+                            graph.kill_edge(eid);
+                        }
+                    }
+
+                    j += 1;
+                }
+
+                if !new_component.edges.is_empty() {
+                    final_components.push(new_component);
+                }
+            }
+
+            split_components = final_components;
+
+            if cfg!(debug_assertions) {
+                println!("Final components after merging S and P nodes:");
+                for (i, component) in split_components.iter().enumerate() {
+                    println!(
+                        "Component {}: type: {:?}, edges: {:?}",
+                        i, component.component_type, component.edges
+                    );
+                }
+            }
+        }
+
+        if cfg!(debug_assertions) && false {
+            let dot_output = debugging::draw_components(&split_components, n, &graph.edges);
+
+            std::fs::write("post_last.dot", dot_output).expect("Unable to write to post_last.dot");
+            std::process::Command::new("dot")
+                .args(&["post_last.dot", "-Tpng", "-o", "post_last.png"])
+                .status()
+                .expect("failed to execute dot");
+        }
+
+        split_components
+    }
 }
