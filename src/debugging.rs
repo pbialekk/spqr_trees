@@ -1,5 +1,7 @@
 use dot::{Edges, GraphWalk, Labeller, Nodes};
 
+use crate::triconnected::EdgeType;
+
 type Node = usize;
 type EdgeId = usize;
 
@@ -9,6 +11,7 @@ struct Edge {
     id_internal: usize,
     source: Node,
     target: Node,
+    edge_type: Option<EdgeType>,
 }
 
 struct Graph<'a> {
@@ -18,6 +21,8 @@ struct Graph<'a> {
     lowpt2: &'a [usize],
     parent: &'a [Option<usize>],
     subsz: &'a [usize],
+    num: &'a [usize],
+    high: &'a [Vec<usize>],
 }
 
 impl<'a> Labeller<'a, Node, Edge> for Graph<'a> {
@@ -31,8 +36,10 @@ impl<'a> Labeller<'a, Node, Edge> for Graph<'a> {
 
     fn node_label(&self, n: &Node) -> dot::LabelText<'a> {
         dot::LabelText::label(format!(
-            "{}\nl1:{} l2:{}\np:{} sz:{}",
+            "{}\nnum:{}\nhigh:{:?}\nl1:{} l2:{}\np:{} sz:{}",
             n,
+            self.num[*n],
+            self.high[*n],
             self.lowpt1[*n],
             self.lowpt2[*n],
             if self.parent[*n].is_some() {
@@ -45,7 +52,11 @@ impl<'a> Labeller<'a, Node, Edge> for Graph<'a> {
     }
 
     fn edge_label(&self, e: &Edge) -> dot::LabelText<'a> {
-        dot::LabelText::label(format!("{}({})", e.id, e.id_internal))
+        let etype = match &e.edge_type {
+            Some(t) => format!("{:?}", t),
+            None => "None".to_string(),
+        };
+        dot::LabelText::label(format!("{}({}) {}", e.id, e.id_internal, etype))
     }
 }
 
@@ -70,6 +81,9 @@ impl<'a> GraphWalk<'a, Node, Edge> for Graph<'a> {
 pub fn draw(
     adj: &[Vec<usize>],
     edges: &[(usize, usize)],
+    num: &[usize],
+    high: &[Vec<usize>],
+    edge_type: &[Option<EdgeType>],
     lowpt1: &[usize],
     lowpt2: &[usize],
     parent: &[Option<usize>],
@@ -82,6 +96,8 @@ pub fn draw(
         lowpt2,
         parent,
         subsz,
+        num,
+        high,
     };
 
     for (v, eids) in adj.iter().enumerate() {
@@ -92,6 +108,7 @@ pub fn draw(
                 id_internal: i,
                 source: u,
                 target: v,
+                edge_type: edge_type.get(*eid).cloned().unwrap_or(None),
             });
         }
     }
