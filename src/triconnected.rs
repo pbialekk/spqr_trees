@@ -45,7 +45,7 @@ impl Component {
             self.component_type = Some(if self.edges.len() >= 4 {
                 ComponentType::R
             } else {
-                ComponentType::P
+                ComponentType::S
             });
         }
 
@@ -392,7 +392,10 @@ fn find_split(
             && (Some(root) != graph.par[u] || t_edges_left != 0)
         {
             if cfg!(debug_assertions) {
-                println!("Type 1 pair found ({}, {})", graph.low1[to], u);
+                println!(
+                    "Type 1 pair found ({}, {})",
+                    graph.numrev[graph.low1[to]], u
+                );
             }
 
             let mut component = Component::new(None);
@@ -888,6 +891,8 @@ pub fn get_triconnected_components(in_graph: &UnGraph) -> Vec<Component> {
             }
             component.commit(&mut split_components);
         }
+
+        dbg!(&split_components);
     }
 
     // merge S and P nodes
