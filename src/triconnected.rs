@@ -321,8 +321,8 @@ fn find_split(
 
                 if let Some(&e) = estack.last() {
                     if graph.edges[e] == (to, u) {
-                        // a multiedge, it can't happen that .0 == to and .1 == u since that'd make a type-1 pair at 'to'
-                        eab = estack.pop().unwrap();
+                        estack.pop();
+                        eab = e;
                     }
                 }
             } else {
@@ -375,6 +375,8 @@ fn find_split(
 
                 evirt = graph.new_edge(u, to, None);
                 component.push_edge(evirt);
+
+                component.commit(split_components);
             }
 
             estack.push(evirt);
