@@ -12,6 +12,7 @@ struct Edge {
     source: Node,
     target: Node,
     edge_type: Option<EdgeType>,
+    start_path: bool,
 }
 
 struct Graph<'a> {
@@ -56,7 +57,13 @@ impl<'a> Labeller<'a, Node, Edge> for Graph<'a> {
             Some(t) => format!("{:?}", t),
             None => "None".to_string(),
         };
-        dot::LabelText::label(format!("{}({}) {}", e.id, e.id_internal, etype))
+        dot::LabelText::label(format!(
+            "{}({}) {} {}",
+            e.id,
+            e.id_internal,
+            etype,
+            if e.start_path { "start" } else { "" }
+        ))
     }
 }
 
@@ -84,6 +91,7 @@ pub fn draw(
     num: &[usize],
     high: &[Vec<usize>],
     edge_type: &[Option<EdgeType>],
+    starts_path: &[bool],
     lowpt1: &[usize],
     lowpt2: &[usize],
     parent: &[Option<usize>],
@@ -109,6 +117,7 @@ pub fn draw(
                 source: u,
                 target: v,
                 edge_type: edge_type.get(*eid).cloned().unwrap_or(None),
+                start_path: starts_path.get(*eid).cloned().unwrap_or(false),
             });
         }
     }
