@@ -167,7 +167,7 @@ impl GraphInternal {
             if self.edge_type[eid] == Some(EdgeType::Killed) {
                 continue;
             }
-            return eid;
+            return self.edges[eid].1;
         }
         return usize::MAX;
     }
@@ -572,8 +572,6 @@ fn dfs_1(u: usize, time: &mut usize, graph: &mut GraphInternal) {
         }
 
         let to = graph.get_other(eid, u);
-
-        graph.deg[to] += 1;
 
         if graph.edge_type[eid].is_some() {
             continue; // already visited 
