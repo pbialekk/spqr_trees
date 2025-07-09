@@ -299,7 +299,7 @@ fn find_split(
                 to = graph.first_alive(root, to);
 
                 if cfg!(debug_assertions) {
-                    println!("Type 2 pair found (easy one) ({}, {})", a, to);
+                    println!("Type 2 pair found (easy one) ({}, {})", u, to);
                 }
 
                 let mut component = Component::new(Some(ComponentType::S));
