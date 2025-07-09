@@ -348,7 +348,7 @@ fn reduce(
     )
 }
 
-pub fn get_vertex_split_pairs(in_graph: UnGraph) -> Vec<(usize, usize)> {
+pub fn get_vertex_split_pairs(in_graph: &UnGraph) -> Vec<(usize, usize)> {
     let (
         graph,
         edge_list,
@@ -509,7 +509,7 @@ mod reduce_tests {
     }
 
     #[test]
-    fn test_brute_triangle() {
+    fn test_triangle() {
         let mut g = UnGraph::new_undirected();
         let a = g.add_node(0);
         let b = g.add_node(1);
@@ -517,11 +517,11 @@ mod reduce_tests {
         g.add_edge(a, b, EdgeLabel::Real);
         g.add_edge(b, c, EdgeLabel::Real);
         g.add_edge(c, a, EdgeLabel::Real);
-        let components = get_triconnected_components(&g);
-        assert_eq!(components, vec![vec![0], vec![1], vec![2]]);
+        let components_brute = get_triconnected_components(&g);
+        assert_eq!(components_brute, vec![vec![0], vec![1], vec![2]]);
     }
     #[test]
-    fn test_brute_diamond() {
+    fn test_diamond() {
         let mut g = UnGraph::new_undirected();
         let a = g.add_node(0);
         let b = g.add_node(1);
@@ -533,7 +533,27 @@ mod reduce_tests {
         g.add_edge(a, b, EdgeLabel::Real);
         g.add_edge(c, d, EdgeLabel::Real);
         g.add_edge(d, b, EdgeLabel::Real);
-        let components = get_triconnected_components(&g);
-        assert_eq!(components, vec![vec![0, 3], vec![1], vec![2]]);
+        let components_brute = get_triconnected_components(&g);
+        assert_eq!(components_brute, vec![vec![0, 3], vec![1], vec![2]]);
+    }
+    #[test]
+    fn test_multiedges() {
+        let mut g = UnGraph::new_undirected();
+        let a = g.add_node(0);
+        let b = g.add_node(1);
+
+        let c = g.add_node(2);
+        let d = g.add_node(3);
+
+        g.add_edge(a, b, EdgeLabel::Real);
+        g.add_edge(a, b, EdgeLabel::Real);
+        g.add_edge(a, b, EdgeLabel::Real);
+
+        g.add_edge(b, c, EdgeLabel::Real);
+        g.add_edge(c, d, EdgeLabel::Real);
+        g.add_edge(c, d, EdgeLabel::Real);
+
+        let components_brute = get_triconnected_components(&g);
+        assert_eq!(components_brute, vec![vec![0, 1], vec![2], vec![3]]);
     }
 }

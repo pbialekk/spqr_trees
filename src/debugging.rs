@@ -111,6 +111,10 @@ pub fn draw(
     for (v, eids) in adj.iter().enumerate() {
         for (i, eid) in eids.iter().enumerate() {
             let (u, v) = edges[*eid];
+            if edge_type.get(*eid) == Some(&Some(EdgeType::Killed)) {
+                continue;
+            }
+
             graph.edges.push(Edge {
                 id: *eid,
                 id_internal: i,
@@ -125,4 +129,13 @@ pub fn draw(
     let mut buffer = std::io::Cursor::new(Vec::new());
     dot::render(&graph, &mut buffer).unwrap();
     String::from_utf8(buffer.into_inner()).unwrap()
+}
+
+pub fn draw_components(
+    split_components: &[crate::triconnected::Component],
+    n: usize,
+    edges: &[(usize, usize)],
+) -> String {
+    // TODO
+    unimplemented!()
 }
