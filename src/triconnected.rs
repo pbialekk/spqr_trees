@@ -372,7 +372,7 @@ pub fn get_triconnected_components(in_graph: &UnGraph) -> Vec<Component> {
             }
         };
 
-        let mut buckets: Vec<Vec<usize>> = vec![Vec::new(); 3 * (n) + 2];
+        let mut buckets: Vec<Vec<usize>> = vec![Vec::new(); 3 * (n - 1) + 2 + 1];
 
         for (eid, edge) in graph.edges.iter().enumerate() {
             if graph.edge_type[eid] == Some(EdgeType::Killed) {
@@ -461,6 +461,7 @@ pub fn get_triconnected_components(in_graph: &UnGraph) -> Vec<Component> {
             &graph.num,
             &graph.high,
             &graph.edge_type,
+            &graph.starts_path,
             &graph.low1,
             &graph.low2,
             &graph.par,
