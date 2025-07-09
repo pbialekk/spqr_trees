@@ -175,6 +175,42 @@ fn find_split(
         tstack.push((max_h, a, last_b));
     }
 
+    fn ensure_highpoint(
+        u: usize,
+        tstack: &mut Vec<(usize, usize, usize)>,
+        graph: &mut GraphInternal,
+    ) {
+        fn get_high(u: usize, graph: &mut GraphInternal) -> usize {
+            while let Some(&eid) = graph.high[u].last() {
+                if graph.edge_type[eid] == Some(EdgeType::Killed) {
+                    graph.high[u].pop();
+
+                    if cfg!(debug_assertions) {
+                        println!("Removing killed edge {} from highpoint of {}", eid, u);
+                    }
+                } else {
+                    return eid;
+                }
+            }
+            0
+        }
+
+        while let Some(&(h, a, b)) = tstack.last() {
+            if a != u && b != u && get_high(u, graph) > h {
+                if cfg!(debug_assertions) {
+                    println!(
+                        "Popping tstack due to ensure_highpoints: ({}, {}, {})",
+                        h, a, b
+                    );
+                }
+
+                tstack.pop();
+            } else {
+                break;
+            }
+        }
+    }
+
     let mut i = 0;
     while i < graph.adj[u].len() {
         let eid = graph.adj[u][i];
@@ -186,6 +222,31 @@ fn find_split(
         let to = graph.get_other(eid, u);
         if graph.starts_path[eid] {
             update_tstack(u, to, eid, tstack, graph);
+        }
+
+        if graph.edge_type[eid] == Some(EdgeType::Tree) {
+            let mut empty_tstack = vec![];
+            find_split(
+                root,
+                to,
+                graph,
+                estack,
+                if graph.starts_path[eid] {
+                    &mut empty_tstack
+                } else {
+                    tstack
+                },
+                split_components,
+            );
+
+            let push_eid = graph.par_edge[to].unwrap(); // eid could be killed by the multiple edge case in check_type_x
+            estack.push(push_eid);
+
+            // check_type_2
+            // check_type_1
+
+            ensure_highpoint(u, tstack, graph);
+        } else {
         }
 
         i += 1;
