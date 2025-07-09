@@ -139,7 +139,7 @@ impl GraphInternal {
         self.par_edge[t] = Some(eid);
         self.par[t] = Some(s);
     }
-    fn make_bedge(&mut self, eid: usize) {
+    fn make_bedge(&mut self, eid: usize, highest: usize) {
         if cfg!(debug_assertions) {
             println!(
                 "Making edge {} a back edge: ({}, {})",
@@ -153,7 +153,9 @@ impl GraphInternal {
         self.deg[s] += 1;
         self.deg[t] += 1;
 
-        self.high[t].push(eid);
+        if highest < self.num[s] {
+            self.high[t].push(eid);
+        }
     }
     fn get_other(&self, eid: usize, u: usize) -> usize {
         let (s, t) = self.edges[eid];
@@ -225,31 +227,33 @@ fn find_split(
         tstack.push((max_h, a, last_b));
     }
 
+    fn get_high(u: usize, graph: &mut GraphInternal) -> usize {
+        while let Some(&eid) = graph.high[u].last() {
+            if graph.edge_type[eid] == Some(EdgeType::Killed) {
+                graph.high[u].pop();
+
+                if cfg!(debug_assertions) {
+                    println!("Removing killed edge {} from highpoint of {}", eid, u);
+                }
+            } else {
+                return graph.num[graph.get_other(eid, u)];
+            }
+        }
+        0
+    }
+
     fn ensure_highpoint(
         u: usize,
         tstack: &mut Vec<(usize, usize, usize)>,
         graph: &mut GraphInternal,
     ) {
-        fn get_high(u: usize, graph: &mut GraphInternal) -> usize {
-            while let Some(&eid) = graph.high[u].last() {
-                if graph.edge_type[eid] == Some(EdgeType::Killed) {
-                    graph.high[u].pop();
-
-                    if cfg!(debug_assertions) {
-                        println!("Removing killed edge {} from highpoint of {}", eid, u);
-                    }
-                } else {
-                    return eid;
-                }
-            }
-            0
-        }
+        let u_high = get_high(u, graph);
 
         while let Some(&(h, a, b)) = tstack.last() {
-            if a != u && b != u && get_high(u, graph) > h {
+            if a != u && b != u && graph.num[u_high] > h {
                 if cfg!(debug_assertions) {
                     println!(
-                        "Popping tstack due to ensure_highpoints: ({}, {}, {})",
+                        "Popping tstack due to ensure_highpoint: ({}, {}, {})",
                         h, a, b
                     );
                 }
@@ -444,7 +448,9 @@ fn find_split(
 
             if Some(graph.numrev[graph.low1[to]]) != graph.par[u] {
                 estack.push(evirt);
-                graph.make_bedge(evirt);
+
+                let highest = get_high(u, graph);
+                graph.make_bedge(evirt, highest);
             } else {
                 let parent_edge = graph.par_edge[u].unwrap();
 
@@ -817,6 +823,7 @@ pub fn get_triconnected_components(in_graph: &UnGraph) -> Vec<Component> {
             graph.low2[u] = num2newnum[graph.low2[u]];
             graph.num[u] = newnum[u];
             graph.numrev[graph.num[u]] = u;
+            graph.high[u].reverse();
         }
 
         if cfg!(debug_assertions) {
