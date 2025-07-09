@@ -60,6 +60,7 @@ struct GraphInternal {
 
     num: Vec<usize>,
 
+    par_edge: Vec<Option<usize>>, // edge id of the parent edge in DFS tree
     par: Vec<Option<usize>>,
     low1: Vec<usize>,
     low2: Vec<usize>,
@@ -79,6 +80,7 @@ impl GraphInternal {
 
             num: vec![usize::MAX; n],
 
+            par_edge: vec![None; n], // edge id of the parent edge in DFS tree
             par: vec![None; n],
             low1: vec![0; n],
             low2: vec![0; n],
@@ -188,6 +190,7 @@ fn dfs_1(u: usize, time: &mut usize, graph: &mut GraphInternal) {
 
         if graph.num[to] == usize::MAX {
             // tree edge
+            graph.par_edge[to] = Some(eid);
             graph.par[to] = Some(u);
             graph.edge_type[eid] = Some(EdgeType::Tree);
 
