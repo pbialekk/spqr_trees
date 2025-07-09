@@ -129,10 +129,67 @@ fn find_split(
     u: usize,
     graph: &mut GraphInternal,
     estack: &mut Vec<usize>,
-    tstack: &mut Vec<usize>,
+    tstack: &mut Vec<(usize, usize, usize)>,
     split_components: &mut Vec<Component>,
 ) {
-    // TODO
+    fn update_tstack(
+        u: usize,
+        to: usize,
+        eid: usize,
+        tstack: &mut Vec<(usize, usize, usize)>,
+        graph: &GraphInternal,
+    ) {
+        fn pop_tstack(
+            cutoff: usize,
+            mut max_h: usize,
+            mut last_b: usize,
+            tstack: &mut Vec<(usize, usize, usize)>,
+        ) -> (usize, usize, usize) {
+            while let Some(&(h, a, b)) = tstack.last() {
+                if a > cutoff {
+                    if cfg!(debug_assertions) {
+                        println!("Popping tstack: ({}, {}, {})", h, a, b);
+                    }
+                    tstack.pop();
+                    max_h = h.max(max_h);
+                    last_b = b;
+                } else {
+                    break;
+                }
+            }
+
+            (max_h, cutoff, last_b)
+        }
+
+        let (max_h, a, last_b) = if graph.edge_type[eid] == Some(EdgeType::Tree) {
+            pop_tstack(
+                graph.low1[to],
+                graph.num[to] + graph.sub[to] - 1,
+                graph.num[u],
+                tstack,
+            )
+        } else {
+            pop_tstack(graph.num[to], graph.num[u], graph.num[u], tstack)
+        };
+
+        tstack.push((max_h, a, last_b));
+    }
+
+    let mut i = 0;
+    while i < graph.adj[u].len() {
+        let eid = graph.adj[u][i];
+        if graph.edge_type[eid] == Some(EdgeType::Killed) {
+            i += 1;
+            continue; // skip killed edges
+        }
+
+        let to = graph.get_other(eid, u);
+        if graph.starts_path[eid] {
+            update_tstack(u, to, eid, tstack, graph);
+        }
+
+        i += 1;
+    }
 }
 
 fn pathfinder_dfs(
