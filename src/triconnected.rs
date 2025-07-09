@@ -601,6 +601,7 @@ pub fn get_triconnected_components(in_graph: &UnGraph) -> Vec<Component> {
 
                     let (s, t) = graph.edges[i];
                     let eid = graph.new_edge(s, t, None);
+                    component.push_edge(eid);
                     graph.adj[t].push(eid); // add t->s edge as well, since we are not rooted yet
 
                     component.push_edge(i);
