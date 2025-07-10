@@ -2,7 +2,7 @@ use std::mem::{self};
 
 use petgraph::visit::EdgeRef;
 
-use crate::{UnGraph, debugging};
+use crate::{UnGraph, block_cut::get_block_cut_tree, debugging};
 
 /// Reference: https://epubs.siam.org/doi/10.1137/0202012
 // TODO: describe general idea
@@ -133,9 +133,6 @@ impl GraphInternal {
         self.edge_type[eid] = Some(EdgeType::Tree);
         let (s, t) = self.edges[eid];
 
-        self.deg[s] += 1;
-        self.deg[t] += 1;
-
         self.par_edge[t] = Some(eid);
         self.par[t] = Some(s);
     }
@@ -149,9 +146,6 @@ impl GraphInternal {
 
         self.edge_type[eid] = Some(EdgeType::Back);
         let (s, t) = self.edges[eid];
-
-        self.deg[s] += 1;
-        self.deg[t] += 1;
 
         if self.get_high(s) < self.num[s] {
             self.high[t].push(eid);
@@ -249,7 +243,7 @@ fn find_split(
         let u_high = graph.get_high(u);
 
         while let Some(&(h, a, b)) = tstack.last() {
-            if a != u && b != u && graph.num[u_high] > h {
+            if a != u && b != u && u_high > h {
                 if cfg!(debug_assertions) {
                     println!(
                         "Popping tstack due to ensure_highpoint: ({}, {}, {})",
@@ -273,6 +267,10 @@ fn find_split(
         graph: &mut GraphInternal,
         split_components: &mut Vec<Component>,
     ) {
+        if graph.num[u] == root {
+            return;
+        }
+
         loop {
             let (h, a, b) = if let Some(&last) = tstack.last() {
                 last
@@ -280,7 +278,7 @@ fn find_split(
                 (0, usize::MAX, 0)
             };
 
-            let cond_1 = graph.num[u] != root && a == graph.num[u];
+            let cond_1 = a == graph.num[u];
             let cond_2 =
                 graph.deg[to] == 2 && graph.num[graph.first_alive(root, to)] > graph.num[to];
 
@@ -289,7 +287,10 @@ fn find_split(
             }
             if a == graph.num[u] && graph.par[graph.numrev[b]] == Some(u) {
                 if cfg!(debug_assertions) {
-                    println!("Popping {} {} from tstack: no inner vertex exists", a, b);
+                    println!(
+                        "Popping {} {} from tstack: no inner vertex exists",
+                        graph.numrev[a], graph.numrev[b]
+                    );
                 }
 
                 tstack.pop();
@@ -328,6 +329,7 @@ fn find_split(
                 to = graph.numrev[b];
                 if cfg!(debug_assertions) {
                     println!("Type 2 pair found (hard one) ({}, {})", u, to);
+                    dbg!(h);
                 }
 
                 tstack.pop();
@@ -531,7 +533,7 @@ fn find_split(
     }
 }
 
-pub fn get_triconnected_components(in_graph: &UnGraph) -> Vec<Component> {
+pub fn get_triconnected_components(in_graph: &UnGraph) -> (Vec<Component>, Vec<(usize, usize)>) {
     let n = in_graph.node_count();
     let m = in_graph.edge_count();
     let root = 0;
@@ -542,7 +544,24 @@ pub fn get_triconnected_components(in_graph: &UnGraph) -> Vec<Component> {
         println!("{} nodes, {} edges", n, m);
     }
 
-    // TODO: input graph should be biconnected, assert it here?
+    assert!(get_block_cut_tree(&in_graph).block_count == 1);
+    assert!(n >= 2);
+
+    if n == 2 {
+        let mut c = Component::new(Some(ComponentType::P));
+        let mut edges = Vec::new();
+        for i in in_graph.edge_references() {
+            let (s, t) = (i.source().index(), i.target().index());
+            edges.push((s, t));
+            c.push_edge(i.id().index());
+        }
+
+        if m >= 3 {
+            return (vec![c], edges);
+        } else {
+            return (vec![], edges);
+        }
+    }
 
     let mut graph = GraphInternal::new(n, m);
 
@@ -605,13 +624,13 @@ pub fn get_triconnected_components(in_graph: &UnGraph) -> Vec<Component> {
                     graph.adj[t].push(eid); // add t->s edge as well, since we are not rooted yet
 
                     component.push_edge(i);
-                    graph.edge_type[i] = Some(EdgeType::Killed);
+                    graph.kill_edge(i);
 
                     while i + 1 < len && graph.edges[i + 1] == graph.edges[i] {
                         i += 1;
 
                         component.push_edge(i);
-                        graph.edge_type[i] = Some(EdgeType::Killed);
+                        graph.kill_edge(i);
                     }
 
                     split_components.push(component);
@@ -792,7 +811,7 @@ pub fn get_triconnected_components(in_graph: &UnGraph) -> Vec<Component> {
             newnum: &mut Vec<usize>,
             time: &mut usize,
         ) {
-            let first_eid = graph.first_alive(root, u);
+            let first_to = graph.first_alive(root, u);
 
             let neighbors = graph.adj[u].clone(); // borrow checker doesn't like mutable borrow below
 
@@ -800,7 +819,7 @@ pub fn get_triconnected_components(in_graph: &UnGraph) -> Vec<Component> {
                 let to = graph.get_other(eid, u);
                 // no killed edges here
 
-                if eid != first_eid {
+                if to != first_to {
                     graph.starts_path[eid] = true;
                 }
 
@@ -959,7 +978,7 @@ pub fn get_triconnected_components(in_graph: &UnGraph) -> Vec<Component> {
                             new_component
                                 .edges
                                 .extend(guy_component.edges.iter().filter(|&&e| e != eid));
-                            graph.kill_edge(eid);
+                            // graph.kill_edge(eid);
                         }
                     }
 
@@ -994,6 +1013,158 @@ pub fn get_triconnected_components(in_graph: &UnGraph) -> Vec<Component> {
                 .expect("failed to execute dot");
         }
 
-        split_components
+        (split_components, graph.edges)
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use petgraph::visit::{IntoNodeReferences, NodeIndexable};
+
+    use crate::{EdgeLabel, block_cut::get_block_cut_tree};
+
+    use super::*;
+
+    fn are_triconnected_brute(in_graph: &UnGraph) -> Vec<Vec<bool>> {
+        let n = in_graph.node_references().count();
+        let mut res: Vec<Vec<bool>> = vec![vec![false; n]; n];
+        let mut cap = vec![vec![0; n * 2]; n * 2]; // indices from 0 to n-1 are 'ins', rest are 'outs'
+
+        for (u, v) in in_graph
+            .edge_references()
+            .map(|e| (e.source().index(), e.target().index()))
+        {
+            cap[u + n][v] += 1;
+            cap[v + n][u] += 1;
+        }
+        for u in 0..n {
+            cap[u][u + n] += 1; // ins to outs
+        }
+
+        fn is_3_conn(s: usize, t: usize, cap: &Vec<Vec<usize>>) -> bool {
+            let mut cap = cap.clone();
+            let mut vis = vec![false; cap.len()];
+            fn dfs(u: usize, t: usize, cap: &mut Vec<Vec<usize>>, vis: &mut Vec<bool>) -> bool {
+                vis[u] = true;
+                if u == t {
+                    return true;
+                }
+                for v in 0..cap.len() {
+                    if !vis[v] && cap[u][v] > 0 {
+                        if dfs(v, t, cap, vis) {
+                            cap[u][v] -= 1;
+                            cap[v][u] += 1;
+                            return true;
+                        }
+                    }
+                }
+                false
+            }
+            for i in 0..3 {
+                if !dfs(s + cap.len() / 2, t, &mut cap, &mut vis) {
+                    return false;
+                }
+                vis.fill(false);
+            }
+            true
+        }
+
+        for u in 0..n {
+            for v in 0..n {
+                if u == v {
+                    continue;
+                }
+                res[u][v] = is_3_conn(u, v, &cap);
+            }
+        }
+
+        res
+    }
+    fn random_biconnected_graph(n: usize, m: usize, seed: usize) -> UnGraph {
+        use rand::Rng;
+        use rand::SeedableRng;
+        use rand::rngs::StdRng;
+
+        let mut rng = StdRng::seed_from_u64(seed as u64);
+        let mut graph = UnGraph::new_undirected();
+
+        for i in 0..n {
+            graph.add_node(i.try_into().unwrap());
+            if i > 0 {
+                let j = rng.random_range(0..i);
+                graph.add_edge(graph.from_index(i), graph.from_index(j), EdgeLabel::Real);
+            }
+        }
+
+        for _ in n - 1..m {
+            let s = rng.random_range(0..n);
+            let t = rng.random_range(0..n);
+            graph.add_edge(graph.from_index(s), graph.from_index(t), EdgeLabel::Real);
+        }
+
+        let bct = get_block_cut_tree(&graph);
+
+        bct.blocks[0].clone()
+    }
+
+    fn answer_fast(
+        n: usize,
+        m: usize,
+        split_components: &Vec<Component>,
+        edges: &Vec<(usize, usize)>,
+    ) -> Vec<Vec<bool>> {
+        if n == 2 && m <= 2 {
+            return vec![vec![false, false], vec![false, false]];
+        }
+        let mut res = vec![vec![false; n]; n];
+
+        for c in split_components {
+            if c.component_type == Some(ComponentType::S) {
+                // not triconnected
+                continue;
+            }
+
+            let mut vertex_set = Vec::new();
+            for e in c.edges.iter() {
+                let (u, v) = edges[*e];
+                vertex_set.push(u);
+                vertex_set.push(v);
+            }
+            vertex_set.sort();
+            vertex_set.dedup();
+
+            for &x in &vertex_set {
+                for &y in &vertex_set {
+                    if x != y {
+                        res[x][y] = true;
+                    }
+                }
+            }
+        }
+
+        res
+    }
+
+    // it's advised to run this one with --release flag
+    #[test]
+    fn test_triconnected_components() {
+        for i in 0..100 {
+            println!("test_triconnected_components() it: {}", i);
+
+            let n = 50;
+            let m = 49 + i;
+
+            let in_graph = random_biconnected_graph(n, m, i);
+
+            let (split_components, edges) = get_triconnected_components(&in_graph);
+
+            let n = in_graph.node_references().count();
+            let m = in_graph.edge_references().count();
+
+            let brute_mat = are_triconnected_brute(&in_graph);
+            let fast_mat = answer_fast(n, m, &split_components, &edges);
+
+            assert_eq!(brute_mat, fast_mat);
+        }
     }
 }
