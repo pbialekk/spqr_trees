@@ -740,7 +740,7 @@ pub fn get_triconnected_components(in_graph: &UnGraph) -> Vec<Component> {
                     3 * graph.low1[to] + 2
                 }
             } else {
-                3 * to + 1
+                3 * graph.num[to] + 1
             }
         };
 
