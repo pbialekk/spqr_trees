@@ -1148,7 +1148,7 @@ mod tests {
     // it's advised to run this one with --release flag
     #[test]
     fn test_triconnected_components() {
-        for i in 0..100 {
+        for i in 0..1000 {
             println!("test_triconnected_components() it: {}", i);
 
             let n = 50;

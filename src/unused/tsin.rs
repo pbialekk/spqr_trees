@@ -1,5 +1,3 @@
-use crate::UnGraph;
-use petgraph::visit::{EdgeRef, IntoNodeReferences, NodeIndexable};
 
 /// Based on https://www.sciencedirect.com/science/article/pii/S1570866708000415
 fn dfs(

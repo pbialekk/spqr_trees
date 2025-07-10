@@ -1,4 +1,3 @@
-use std::mem::swap;
 
 /// Reference: https://dl.acm.org/doi/pdf/10.5555/1862776.1862783
 use crate::{UnGraph, tsin::get_edge_split_pairs};
