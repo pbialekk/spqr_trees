@@ -2,169 +2,23 @@ use std::mem::{self};
 
 use petgraph::visit::EdgeRef;
 
-use crate::{UnGraph, block_cut::get_block_cut_tree, debugging};
+use crate::{
+    UnGraph,
+    block_cut::get_block_cut_tree,
+    triconnected_blocks::{
+        acceptable_adj::make_adjacency_lists_acceptable,
+        graph_internal::GraphInternal,
+        handle_duplicate_edges::handle_duplicate_edges,
+        merge_components::merge_components,
+        outside_structures::{Component, ComponentType, EdgeType},
+        palm_dfs::run_palm_dfs,
+        pathfinder::run_pathfinder,
+    },
+};
 
 /// Reference paper: https://epubs.siam.org/doi/10.1137/0202012
 
-#[derive(Debug, Clone, PartialEq)]
-pub enum EdgeType {
-    Tree,
-    Back,
-    Killed,
-}
-
-#[derive(Debug, Clone, PartialEq)]
-pub enum ComponentType {
-    P, // bond
-    S, // triangle
-    R, // triconnected
-}
-
-#[derive(Debug, Clone)]
-pub struct Component {
-    pub edges: Vec<usize>,
-    pub component_type: Option<ComponentType>,
-}
-
-impl Component {
-    pub fn new(component_type: Option<ComponentType>) -> Self {
-        Self {
-            edges: Vec::new(),
-            component_type,
-        }
-    }
-
-    fn push_edge(&mut self, eid: usize, graph: &mut GraphInternal, is_virtual: bool) -> &mut Self {
-        self.edges.push(eid);
-        if !is_virtual {
-            graph.remove_edge(eid);
-        }
-
-        self
-    }
-
-    pub fn commit(&mut self, split_components: &mut Vec<Component>) {
-        if self.component_type.is_none() {
-            self.component_type = Some(if self.edges.len() >= 4 {
-                ComponentType::R
-            } else {
-                ComponentType::S
-            });
-        }
-
-        split_components.push(self.clone());
-    }
-}
-
-// holds num[v], par[v], low1[v], low2[v], sub[v], deg[v]
-#[derive(Debug, Clone)]
-struct GraphInternal {
-    adj: Vec<Vec<usize>>, // adjacency list, edges are stored as indices in `edges`
-    edges: Vec<(usize, usize)>, // edges in the form (source, target)
-    edge_type: Vec<Option<EdgeType>>, // edge type, None means not visited yet
-
-    num: Vec<usize>,
-
-    par_edge: Vec<Option<usize>>, // edge id of the parent edge in DFS tree
-    par: Vec<Option<usize>>,
-    low1: Vec<usize>,
-    low2: Vec<usize>,
-    sub: Vec<usize>,
-    deg: Vec<usize>,
-
-    high: Vec<Vec<usize>>, // pathfinder starts here
-    numrev: Vec<usize>,    // reverse mapping from num to original vertex
-    starts_path: Vec<bool>,
-}
-impl GraphInternal {
-    fn new(n: usize, m: usize) -> Self {
-        Self {
-            adj: vec![Vec::new(); n], // adjacency list, edges are stored as indices in `edges`
-            edges: Vec::new(),        // edges in the form (source, target)
-            edge_type: Vec::new(),    // edge type, None means not visited yet
-
-            num: vec![usize::MAX; n],
-
-            par_edge: vec![None; n], // edge id of the parent edge in DFS tree
-            par: vec![None; n],
-            low1: vec![0; n],
-            low2: vec![0; n],
-            sub: vec![0; n],
-            deg: vec![0; n],
-
-            high: vec![Vec::new(); n], // pathfinder starts here
-            numrev: vec![0; n],        // reverse mapping from num to original vertex
-            starts_path: vec![false; m],
-        }
-    }
-    fn new_edge(&mut self, s: usize, t: usize, put_type: Option<EdgeType>) -> usize {
-        let eid = self.edges.len();
-
-        self.edges.push((s, t));
-        self.edge_type.push(put_type);
-        self.adj[s].push(eid);
-        self.starts_path.push(false);
-        self.deg[s] += 1;
-        self.deg[t] += 1;
-
-        eid
-    }
-    fn remove_edge(&mut self, eid: usize) {
-        debug_assert!(self.edge_type[eid] != Some(EdgeType::Killed));
-
-        self.edge_type[eid] = Some(EdgeType::Killed);
-        let (s, t) = self.edges[eid];
-        self.deg[s] -= 1;
-        self.deg[t] -= 1;
-    }
-    fn make_tedge(&mut self, eid: usize) {
-        debug_assert!(self.edge_type[eid] == None);
-
-        self.edge_type[eid] = Some(EdgeType::Tree);
-        let (s, t) = self.edges[eid];
-
-        self.par_edge[t] = Some(eid);
-        self.par[t] = Some(s);
-    }
-    fn make_bedge(&mut self, eid: usize) {
-        debug_assert!(self.edge_type[eid] == None);
-
-        self.edge_type[eid] = Some(EdgeType::Back);
-        let (s, t) = self.edges[eid];
-
-        if self.get_high(s) < self.num[s] {
-            self.high[t].push(eid);
-        }
-    }
-    fn get_other_vertex(&self, eid: usize, u: usize) -> usize {
-        let (s, t) = self.edges[eid];
-        if s == u { t } else { s }
-    }
-    fn first_alive(&self, root: usize, u: usize) -> Option<usize> {
-        if u == root {
-            return None;
-        }
-        for &eid in &self.adj[u] {
-            if self.edge_type[eid] == Some(EdgeType::Killed) {
-                continue;
-            }
-            return Some(self.edges[eid].1);
-        }
-        None
-    }
-    fn get_high(&mut self, u: usize) -> usize {
-        while let Some(&eid) = self.high[u].last() {
-            if self.edge_type[eid] == Some(EdgeType::Killed) {
-                self.high[u].pop();
-            } else {
-                return self.num[self.get_other_vertex(eid, u)];
-            }
-        }
-        0
-    }
-}
-
-fn find_split(
+fn find_components(
     root: usize,
     u: usize,
     vedges_cutoff: usize,
@@ -213,7 +67,7 @@ fn find_split(
         tstack.push((max_h, a, last_b));
     }
 
-    fn ensure_highpoint(
+    fn check_highpoint(
         u: usize,
         tstack: &mut Vec<(usize, usize, usize)>,
         graph: &mut GraphInternal,
@@ -336,6 +190,7 @@ fn find_split(
             graph.make_tedge(evirt);
         }
     }
+
     fn check_type_1(
         root: usize,
         u: usize,
@@ -436,7 +291,7 @@ fn find_split(
 
         if graph.edge_type[eid] == Some(EdgeType::Tree) {
             let mut new_tstack = vec![];
-            find_split(
+            find_components(
                 root,
                 to,
                 vedges_cutoff,
@@ -477,7 +332,7 @@ fn find_split(
                 adjacent_tedges,
             );
 
-            ensure_highpoint(u, tstack, graph);
+            check_highpoint(u, tstack, graph);
         } else {
             estack.push(eid);
         }
@@ -512,264 +367,24 @@ pub fn get_triconnected_components(in_graph: &UnGraph) -> (Vec<Component>, Vec<(
         }
     }
 
-    let mut graph = GraphInternal::new(n, m);
+    let mut graph = GraphInternal::from_petgraph(in_graph);
 
-    // construct edges and adj arrays
-    {
-        for i in in_graph.edge_references() {
-            let (mut s, mut t) = (i.source().index(), i.target().index());
-            if s > t {
-                mem::swap(&mut s, &mut t);
-            }
-
-            graph.new_edge(s, t, None);
-        }
-    }
-
-    // self-explanatory
-
-    {
-        fn sort_pairs_upperbounded(edges: &mut Vec<(usize, usize)>, upper_bound: usize) {
-            let m = edges.len();
-
-            // stable sort by second
-            let mut cnt = vec![0; upper_bound];
-            for &(s, t) in edges.iter() {
-                cnt[t] += 1;
-            }
-            for i in 1..upper_bound {
-                cnt[i] += cnt[i - 1];
-            }
-            let mut tmp = vec![(0, 0); m];
-            for &(s, t) in edges.iter().rev() {
-                cnt[t] -= 1;
-                tmp[cnt[t]] = (s, t);
-            }
-
-            // stable sort by first
-            cnt.fill(0);
-            for &(s, t) in tmp.iter() {
-                cnt[s] += 1;
-            }
-            for i in 1..upper_bound {
-                cnt[i] += cnt[i - 1];
-            }
-            for &(s, t) in tmp.iter().rev() {
-                cnt[s] -= 1;
-                edges[cnt[s]] = (s, t);
-            }
-
-            debug_assert!(edges.is_sorted());
-        }
-
-        sort_pairs_upperbounded(&mut graph.edges, n);
-
-        fn handle_duplicate_edges(
-            graph: &mut GraphInternal,
-            split_components: &mut Vec<Component>,
-        ) {
-            graph.adj = vec![Vec::new(); graph.adj.len()]; // reset adjacency list
-
-            let mut i = 0;
-            let len = graph.edges.len();
-
-            while i < len {
-                let (s, t) = graph.edges[i];
-                if s == t {
-                    // self-loop, we don't care about them
-                    i += 1;
-                    continue;
-                }
-
-                if i + 1 < len && graph.edges[i] == graph.edges[i + 1] {
-                    let mut component = Component::new(Some(ComponentType::P));
-
-                    let (s, t) = graph.edges[i];
-                    let evirt = graph.new_edge(s, t, None);
-                    graph.adj[t].push(evirt); // add t->s edge as well, since we are not rooted yet
-
-                    component.push_edge(evirt, graph, true);
-
-                    component.push_edge(i, graph, false);
-
-                    while i + 1 < len && graph.edges[i + 1] == graph.edges[i] {
-                        i += 1;
-
-                        component.push_edge(i, graph, false);
-                    }
-
-                    split_components.push(component);
-                } else {
-                    graph.adj[s].push(i);
-                    graph.adj[t].push(i); // add both directions, since we are not rooted yet
-                }
-
-                i += 1;
-            }
-        }
-
-        handle_duplicate_edges(&mut graph, &mut split_components);
-    }
+    handle_duplicate_edges(&mut graph, &mut split_components);
 
     // first dfs, computes num, low1, low2, sub, par, deg, edge_type and fixes the edges' direction
-    {
-        let mut time = 0;
-
-        fn dfs_precomp(u: usize, time: &mut usize, graph: &mut GraphInternal) {
-            graph.num[u] = *time;
-            graph.low1[u] = *time;
-            graph.low2[u] = *time;
-            graph.sub[u] = 1;
-            *time += 1;
-
-            let neighbors = graph.adj[u].clone(); // borrow checker doesn't like mutable borrow below
-
-            for &eid in &neighbors {
-                let to = graph.get_other_vertex(eid, u);
-
-                if graph.edge_type[eid].is_some() {
-                    continue; // already visited 
-                }
-
-                if graph.num[to] == usize::MAX {
-                    // tree edge
-                    graph.par_edge[to] = Some(eid);
-                    graph.par[to] = Some(u);
-                    graph.edge_type[eid] = Some(EdgeType::Tree);
-
-                    dfs_precomp(to, time, graph);
-
-                    graph.sub[u] += graph.sub[to];
-
-                    if graph.low1[to] < graph.low1[u] {
-                        graph.low2[u] = graph.low1[u].min(graph.low2[to]);
-                        graph.low1[u] = graph.low1[to];
-                    } else if graph.low1[to] == graph.low1[u] {
-                        graph.low2[u] = graph.low2[u].min(graph.low2[to]);
-                    } else {
-                        graph.low2[u] = graph.low2[u].min(graph.low1[to]);
-                    }
-                } else {
-                    // back edge (upwards)
-                    graph.edge_type[eid] = Some(EdgeType::Back);
-
-                    if graph.num[to] < graph.low1[u] {
-                        graph.low2[u] = graph.low1[u];
-                        graph.low1[u] = graph.num[to];
-                    } else if graph.num[to] > graph.low1[u] {
-                        graph.low2[u] = graph.low2[u].min(graph.num[to]);
-                    }
-                }
-            }
-        }
-
-        dfs_precomp(root, &mut time, &mut graph);
-
-        // now that for each edge we know its type, we can assure that edges in `edges` always point from source to target
-        for (eid, edge) in graph.edges.iter_mut().enumerate() {
-            let (s, t) = (edge.0, edge.1);
-            if (graph.edge_type[eid] == Some(EdgeType::Back) && graph.num[s] < graph.num[t])
-                || (graph.edge_type[eid] == Some(EdgeType::Tree) && graph.num[s] > graph.num[t])
-            {
-                mem::swap(&mut edge.0, &mut edge.1);
-            }
-        }
-    }
+    run_palm_dfs(&mut graph, root);
 
     // compute acceptable adjacency list structure
-    {
-        let phi = |eid: usize| -> usize {
-            let (u, to) = graph.edges[eid];
-            if graph.edge_type[eid] == Some(EdgeType::Tree) {
-                if graph.low2[to] < graph.num[u] {
-                    3 * graph.low1[to]
-                } else {
-                    3 * graph.low1[to] + 2
-                }
-            } else {
-                3 * graph.num[to] + 1
-            }
-        };
+    make_adjacency_lists_acceptable(&mut graph);
 
-        let mut buckets: Vec<Vec<usize>> = vec![Vec::new(); 3 * (n - 1) + 2 + 1];
+    // pathfinder part: calculate high(v), newnum(v), starts_path(e) and newnum(v)
+    run_pathfinder(root, &mut graph);
 
-        for (eid, edge) in graph.edges.iter().enumerate() {
-            if graph.edge_type[eid] == Some(EdgeType::Killed) {
-                continue; // skip killed edges
-            }
-
-            let edge_value = phi(eid);
-            buckets[edge_value].push(eid);
-        }
-
-        let mut new_adj = vec![vec![]; n];
-        for bucket in buckets {
-            for eid in bucket {
-                let (s, t) = graph.edges[eid];
-                new_adj[s].push(eid);
-            }
-        }
-
-        graph.adj = new_adj;
-    }
-
-    // pathfinder part: calculate high(v), newnum(v), starts_path(e)
-    {
-        let mut newnum = vec![0; n];
-        let mut time = n - 1;
-
-        fn pathfinder_dfs(
-            root: usize,
-            u: usize,
-            graph: &mut GraphInternal,
-            newnum: &mut Vec<usize>,
-            time: &mut usize,
-        ) {
-            let first_to = graph.first_alive(root, u);
-
-            let neighbors = graph.adj[u].clone(); // borrow checker doesn't like mutable borrow below
-
-            for &eid in neighbors.iter() {
-                let to = graph.get_other_vertex(eid, u);
-
-                if Some(to) != first_to {
-                    graph.starts_path[eid] = true;
-                }
-
-                if graph.edge_type[eid] == Some(EdgeType::Tree) {
-                    pathfinder_dfs(root, to, graph, newnum, time);
-                } else {
-                    // always a back edge
-                    graph.high[to].push(eid);
-                }
-            }
-
-            newnum[u] = *time;
-            *time = time.saturating_sub(1);
-        }
-
-        pathfinder_dfs(root, root, &mut graph, &mut newnum, &mut time);
-
-        // now we need to renumber the vertices from num(v) to newnum(v)
-        let mut num2newnum = vec![0; n];
-        for u in 0..n {
-            num2newnum[graph.num[u]] = newnum[u];
-        }
-
-        for u in 0..n {
-            graph.low1[u] = num2newnum[graph.low1[u]];
-            graph.low2[u] = num2newnum[graph.low2[u]];
-            graph.num[u] = newnum[u];
-            graph.numrev[graph.num[u]] = u;
-            graph.high[u].reverse();
-        }
-    }
-
-    // detect split_components
+    // find split_components
     {
         let mut estack = Vec::new();
         let mut tstack = Vec::new();
-        find_split(
+        find_components(
             root,
             root,
             graph.edges.len(),
@@ -784,67 +399,11 @@ pub fn get_triconnected_components(in_graph: &UnGraph) -> (Vec<Component>, Vec<(
             component.push_edge(eid, &mut graph, false);
         }
         component.commit(&mut split_components);
-
-        // Merge S and P nodes into larger components of the same type
-        {
-            let mut edge_to_component = vec![None; graph.edges.len()];
-            for (i, component) in split_components.iter().enumerate() {
-                for &eid in &component.edges {
-                    edge_to_component[eid] = Some(i);
-                }
-            }
-
-            let mut merged = vec![false; split_components.len()];
-            let mut final_components = Vec::new();
-
-            for (i, component) in split_components.iter().enumerate() {
-                if merged[i] {
-                    continue;
-                }
-                if component.component_type == Some(ComponentType::R) {
-                    final_components.push(component.clone());
-                    continue;
-                }
-
-                let mut collected_edges = component.edges.clone();
-
-                merged[i] = true;
-
-                let mut j = 0;
-                while j < collected_edges.len() {
-                    let eid = collected_edges[j];
-                    if let Some(other_idx) = edge_to_component[eid] {
-                        if other_idx != i
-                            && !merged[other_idx]
-                            && split_components[other_idx].component_type
-                                == component.component_type
-                        {
-                            merged[other_idx] = true;
-
-                            // Add all edges except the current one to avoid duplicates
-                            collected_edges.extend(
-                                split_components[other_idx]
-                                    .edges
-                                    .iter()
-                                    .filter(|&&e| e != eid),
-                            );
-                        }
-                    }
-                    j += 1;
-                }
-
-                if !collected_edges.is_empty() {
-                    let mut new_component = component.clone();
-                    new_component.edges = collected_edges;
-                    final_components.push(new_component);
-                }
-            }
-
-            split_components = final_components;
-        }
-
-        (split_components, graph.edges)
     }
+
+    split_components = merge_components(graph.edges.len(), &split_components);
+
+    (split_components, graph.edges)
 }
 
 #[cfg(test)]

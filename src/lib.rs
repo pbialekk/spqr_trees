@@ -10,15 +10,16 @@
 //! TODO: add examples of usage later
 //!
 //! TODO: include papers
-
 pub mod block_cut;
-pub mod debugging;
 pub mod input;
 pub mod output;
 pub mod palm_tree;
+
 pub mod triconnected;
+mod triconnected_blocks;
+
 pub mod types;
 
-pub use types::EdgeLabel;
 pub use types::DFSEdgeLabel;
+pub use types::EdgeLabel;
 pub use types::UnGraph;
