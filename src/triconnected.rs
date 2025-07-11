@@ -111,7 +111,7 @@ fn find_components(
                 continue;
             }
 
-            let mut eab = usize::MAX;
+            let mut eab = None;
             let mut evirt;
             if cond_2 {
                 to = graph.first_alive(root, to).unwrap();
@@ -128,10 +128,10 @@ fn find_components(
 
                 component.commit(split_components);
 
-                if let Some(&e) = estack.last() {
-                    if graph.edges[e] == (to, u) {
+                if let Some(&eid) = estack.last() {
+                    if graph.edges[eid] == (to, u) {
                         estack.pop();
-                        eab = e;
+                        eab = Some(eid);
                     }
                 }
             } else {
@@ -151,12 +151,8 @@ fn find_components(
 
                         estack.pop();
 
-                        if [
-                            graph.num[x].min(graph.num[y]),
-                            graph.num[x].max(graph.num[y]),
-                        ] == [graph.num[u], graph.num[to]]
-                        {
-                            eab = eid;
+                        if x == u && y == to || y == u && x == to {
+                            eab = Some(eid);
                         } else {
                             component.push_edge(eid, graph, false);
                         }
@@ -170,7 +166,7 @@ fn find_components(
                 component.commit(split_components);
             }
 
-            if eab != usize::MAX {
+            if let Some(eab) = eab {
                 let mut component = Component::new(Some(ComponentType::P));
                 component.push_edge(eab, graph, false);
 
@@ -363,6 +359,7 @@ fn find_components(
 ///
 /// ## Reference
 /// - [Hopcroft, J., & Tarjan, R. (1973). Dividing a Graph into Triconnected Components. SIAM Journal on Computing, 2(3), 135–158.](https://epubs.siam.org/doi/10.1137/0202012)
+/// - Explaining Hopcroft, Tarjan, Gutwenger, and Mutzel’s SPQR Decomposition Algorithm (https://shoyamanishi.github.io/wailea/docs/spqr_explained/HTGMExplained.pdf)
 pub fn get_triconnected_components(in_graph: &UnGraph) -> (Vec<Component>, Vec<(usize, usize)>) {
     let n = in_graph.node_count();
     let m = in_graph.edge_count();
@@ -662,7 +659,6 @@ mod tests {
         }
     }
 
-    // Only run this test in release mode (i.e., when !(debug_assertions))
     #[cfg(all(test, not(debug_assertions)))]
     #[test]
     fn test_triconnected_components() {
