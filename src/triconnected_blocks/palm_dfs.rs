@@ -50,6 +50,17 @@ fn dfs(u: usize, time: &mut usize, graph: &mut GraphInternal) {
     }
 }
 
+/// Given a graph, this function calculates the `palm tree` of the graph using a DFS algorithm.
+///
+/// In particular, it calculates the values needed further in the algorithm:
+/// - `num[u]` - the order of the vertex in the DFS traversal (preorder number)
+/// - `low1[u]` - the lowest `num` value reachable from `u` via tree edges
+/// - `low2[u]` - the second lowest `num` value reachable
+/// - `sub[u]` - the size of the subtree rooted at `u`
+///
+/// It also determines the type of each edge in the graph, which can be either `Tree` or `Back`.
+///
+/// The function modifies the `graph` in place, setting the `edge_type` for each edge and ensuring that edges always point from source to target.
 pub(crate) fn run_palm_dfs(graph: &mut GraphInternal, root: usize) {
     let mut time = 0;
     dfs(root, &mut time, graph);

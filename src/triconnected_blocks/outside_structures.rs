@@ -7,6 +7,10 @@ pub enum EdgeType {
     Killed,
 }
 
+/// Labels the types of components in the triconnected block decomposition.
+/// - `P` for (k >= 3) bonds
+/// - `S` for cycles,
+/// - `R` for triconnected components.
 #[derive(Debug, Clone, PartialEq)]
 pub enum ComponentType {
     P, // bond
@@ -14,6 +18,9 @@ pub enum ComponentType {
     R, // triconnected
 }
 
+/// Represents a component in the triconnected block decomposition.
+///
+/// It contains a list of edges that belong to the corresponding component and its type.
 #[derive(Debug, Clone)]
 pub struct Component {
     pub edges: Vec<usize>,

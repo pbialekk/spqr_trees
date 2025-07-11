@@ -30,6 +30,10 @@ fn dfs(
     *time = time.saturating_sub(1);
 }
 
+/// This function renumbers the vertices in the graph according to the reverse post-order numbering of the DFS traversal.
+/// It also updates the `low1` and `low2` arrays accordingly, calculates the `high` edges for each vertex, marks the edges that start a new cycle and calculates the `numrev` array which allows to map from the new numbering back to the original vertex indices.
+///
+/// Reference: https://epubs.siam.org/doi/10.1137/0202012, pages 146-147.
 pub(crate) fn run_pathfinder(root: usize, graph: &mut GraphInternal) {
     let mut newnum = vec![0; graph.n];
     let mut time = graph.n - 1;
