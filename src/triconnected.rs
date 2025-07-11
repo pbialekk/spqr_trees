@@ -112,7 +112,7 @@ fn find_components(
             }
 
             let mut eab = usize::MAX;
-            let mut evirt = usize::MAX;
+            let mut evirt;
             if cond_2 {
                 to = graph.first_alive(root, to).unwrap();
 
@@ -469,7 +469,7 @@ mod tests {
                 }
                 false
             }
-            for i in 0..3 {
+            for _ in 0..3 {
                 if !dfs(s + cap.len() / 2, t, &mut cap, &mut vis) {
                     return false;
                 }

@@ -31,7 +31,7 @@ pub(crate) fn make_adjacency_lists_acceptable(graph: &mut GraphInternal) {
     // A simple bucket sort implementation
     let mut buckets: Vec<Vec<usize>> = vec![Vec::new(); 3 * (n - 1) + 2 + 1];
 
-    for (eid, edge) in graph.edges.iter().enumerate() {
+    for (eid, _) in graph.edges.iter().enumerate() {
         if graph.edge_type[eid] == Some(EdgeType::Killed) {
             continue; // skip killed edges
         }
@@ -43,7 +43,7 @@ pub(crate) fn make_adjacency_lists_acceptable(graph: &mut GraphInternal) {
     let mut new_adj = vec![vec![]; n];
     for bucket in buckets {
         for eid in bucket {
-            let (s, t) = graph.edges[eid];
+            let (s, _) = graph.edges[eid];
             new_adj[s].push(eid);
         }
     }

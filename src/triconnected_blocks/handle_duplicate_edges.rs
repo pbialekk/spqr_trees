@@ -14,7 +14,7 @@ pub(crate) fn handle_duplicate_edges(
     // stable sort by second
     let mut cnt = vec![0; graph.n];
 
-    for &(s, t) in graph.edges.iter() {
+    for &(_, t) in graph.edges.iter() {
         cnt[t] += 1;
     }
     for i in 1..graph.n {
@@ -29,7 +29,7 @@ pub(crate) fn handle_duplicate_edges(
 
     // stable sort by first
     cnt.fill(0);
-    for &(s, t) in tmp.iter() {
+    for &(s, _) in tmp.iter() {
         cnt[s] += 1;
     }
     for i in 1..graph.n {
