@@ -3,10 +3,10 @@ use crate::triconnected_blocks::{
     outside_structures::{Component, ComponentType},
 };
 
-/// Handles both duplicate edges and self-loops in the graph.
+/// Handles duplicate edges and self-loops in the graph.
 ///
-/// This function modifies the graph in place, removing self-loops and merging duplicate edges (creating a `P` node).
-/// It also updates the adjacency list of the graph accordingly.
+/// This function modifies the graph in place by removing self-loops and merging duplicate edges,
+/// creating a `P` component for each set of duplicates. The adjacency list is updated accordingly.
 pub(crate) fn handle_duplicate_edges(
     graph: &mut GraphInternal,
     split_components: &mut Vec<Component>,

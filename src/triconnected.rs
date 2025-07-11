@@ -14,8 +14,6 @@ use crate::{
     },
 };
 
-/// Reference paper: https://epubs.siam.org/doi/10.1137/0202012
-
 fn find_components(
     root: usize,
     u: usize,
@@ -339,6 +337,32 @@ fn find_components(
     }
 }
 
+/// Computes the split components (triconnected components) of a biconnected, loopless undirected graph.
+///
+/// # Overview
+///
+/// Given a biconnected graph `G`, this function finds its split components, also known as triconnected components.
+/// The algorithm assumes that the input graph is biconnected and contains no self-loops.
+///
+/// ## Split-Pair Definition
+/// A pair of vertices `(s, t)` is called a *split-pair* if:
+/// - Removing both `s` and `t` disconnects the graph, **or**
+/// - There are multiple edges directly connecting `s` and `t`.
+///
+/// When a split-pair `(s, t)` is found, the graph is split into components by removing `s` and `t`.
+/// For each resulting component, a new *virtual* edge `(s, t)` is added to maintain biconnectivity.
+/// This allows the components to be merged later by "gluing" them together via the virtual edge.
+///
+/// ## Component Types
+/// After recursively splitting on all split-pairs, the resulting components are of three types:
+/// - **P node**: Exactly two vertices with at exactly three edges between them.
+/// - **S node**: Exactly three vertices with exactly three edges (a triangle).
+/// - **R node**: A triconnected component (cannot be split further).
+///
+/// After merging all P nodes with P nodes and S nodes with S nodes, the final set of triconnected components is obtained.
+///
+/// ## Reference
+/// - [Hopcroft, J., & Tarjan, R. (1973). Dividing a Graph into Triconnected Components. SIAM Journal on Computing, 2(3), 135–158.](https://epubs.siam.org/doi/10.1137/0202012)
 pub fn get_triconnected_components(in_graph: &UnGraph) -> (Vec<Component>, Vec<(usize, usize)>) {
     let n = in_graph.node_count();
     let m = in_graph.edge_count();
@@ -379,25 +403,23 @@ pub fn get_triconnected_components(in_graph: &UnGraph) -> (Vec<Component>, Vec<(
     run_pathfinder(root, &mut graph);
 
     // find split_components
-    {
-        let mut estack = Vec::new();
-        let mut tstack = Vec::new();
-        find_components(
-            root,
-            root,
-            graph.edges.len(),
-            &mut graph,
-            &mut estack,
-            &mut tstack,
-            &mut split_components,
-        );
+    let mut estack = Vec::new();
+    let mut tstack = Vec::new();
+    find_components(
+        root,
+        root,
+        graph.edges.len(),
+        &mut graph,
+        &mut estack,
+        &mut tstack,
+        &mut split_components,
+    );
 
-        let mut component = Component::new(None);
-        while let Some(eid) = estack.pop() {
-            component.push_edge(eid, &mut graph, false);
-        }
-        component.commit(&mut split_components);
+    let mut component = Component::new(None);
+    while let Some(eid) = estack.pop() {
+        component.push_edge(eid, &mut graph, false);
     }
+    component.commit(&mut split_components);
 
     merge_components(graph.edges.len(), &mut split_components);
 

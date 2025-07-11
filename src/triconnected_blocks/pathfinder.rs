@@ -30,10 +30,21 @@ fn dfs(
     *time = time.saturating_sub(1);
 }
 
-/// This function renumbers the vertices in the graph according to the reverse post-order numbering of the DFS traversal.
-/// It also updates the `low1` and `low2` arrays accordingly, calculates the `high` edges for each vertex, marks the edges that start a new cycle and calculates the `numrev` array which allows to map from the new numbering back to the original vertex indices.
+/// Renumbers the vertices in the graph according to the reverse post-order numbering of the DFS traversal.
 ///
-/// Reference: https://epubs.siam.org/doi/10.1137/0202012, pages 146-147.
+/// This function also updates the `low1` and `low2` arrays, computes the `high` edges for each vertex,
+/// marks the edges that start a new cycle, and calculates the `numrev` array, which allows mapping from
+/// the new numbering back to the original vertex indices.
+///
+/// The reverse post-order numbering has useful properties for triconnected component algorithms:
+///
+/// - If vertex `u` has two children `v` and `w` in the palm tree of `G`, then `num(u) < num(v), num(w)`.
+/// - Also, `num(u) < {x | x ∈ Sub(w)} < num(v)`.
+/// - If `w` is a first descendant of `v` (i.e., each time we walk down from `v`, we choose the leftmost edge),
+///   then `Sub(u) \ Sub(w) = {x | num(v) <= num(x) < num(w)}`.
+///
+/// ## Reference
+/// - [Hopcroft, J., & Tarjan, R. (1973). Dividing a Graph into Triconnected Components. SIAM Journal on Computing, 2(3), 135–158.](https://epubs.siam.org/doi/10.1137/0202012)
 pub(crate) fn run_pathfinder(root: usize, graph: &mut GraphInternal) {
     let mut newnum = vec![0; graph.n];
     let mut time = graph.n - 1;

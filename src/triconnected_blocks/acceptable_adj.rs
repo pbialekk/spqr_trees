@@ -1,15 +1,17 @@
 use crate::triconnected_blocks::{graph_internal::GraphInternal, outside_structures::EdgeType};
 
-/// Given a graph g, this function modifies it's adjacency lists.
-/// Each edge is assigned a value phi(e) and the edges are then
-/// sorted inside the adjacency lists based on these values.
+/// Modifies the adjacency lists of the given graph so that edges are sorted
+/// according to a custom phi value.
 ///
-/// The phi function is defined as follows:
-/// - If the edge (`e = (u, to)`) is a tree edge and the lowpoint of the target vertex is less than the discovery time of the source vertex,
-///   then `phi(e) = 3 * low1[to]` (there's only one way to escape the subtree rooted at `to`)
-/// - If the edge is a tree edge and the lowpoint of the target vertex is greater than or equal to the discovery time of the source vertex,
-///   then `phi(e) = 3 * low1[to] + 2` (there is more than one way to escape the subtree rooted at `to`)
-/// - If the edge is not a tree edge, then `phi(e) = 3 * num[to] + 1`
+/// The phi function assigns a value to each edge as follows:
+/// - For a tree edge (e = (u, to)):
+///     - If `low2[to] < num[u]`, then `phi(e) = 3 * low1[to]`
+///       (only one way to escape the subtree rooted at `to`)
+///     - Otherwise, `phi(e) = 3 * low1[to] + 2`
+///       (more than one way to escape the subtree rooted at `to`)
+/// - For a non-tree edge: `phi(e) = 3 * num[to] + 1`
+///
+/// Edges are then bucket-sorted by their phi values and adjacency lists are rebuilt.
 pub(crate) fn make_adjacency_lists_acceptable(graph: &mut GraphInternal) {
     let phi = |eid: usize| -> usize {
         let (u, to) = graph.edges[eid];
