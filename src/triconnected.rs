@@ -34,8 +34,12 @@ impl Component {
         }
     }
 
-    pub fn push_edge(&mut self, edge: usize) -> &mut Self {
-        self.edges.push(edge);
+    fn push_edge(&mut self, eid: usize, graph: &mut GraphInternal, is_virtual: bool) -> &mut Self {
+        self.edges.push(eid);
+        if !is_virtual {
+            graph.remove_edge(eid);
+        }
+
         self
     }
 
@@ -265,13 +269,12 @@ fn find_split(
                 let mut component = Component::new(Some(ComponentType::S));
 
                 for _ in 0..2 {
-                    let e = estack.pop().unwrap();
-                    graph.remove_edge(e);
-                    component.push_edge(e);
+                    let eid = estack.pop().unwrap();
+                    component.push_edge(eid, graph, false);
                 }
 
                 evirt = graph.new_edge(u, to, None);
-                component.push_edge(evirt);
+                component.push_edge(evirt, graph, true);
 
                 component.commit(split_components);
 
@@ -287,8 +290,8 @@ fn find_split(
                 tstack.pop();
                 let mut component = Component::new(None);
                 loop {
-                    if let Some(&e) = estack.last() {
-                        let (x, y) = graph.edges[e];
+                    if let Some(&eid) = estack.last() {
+                        let (x, y) = graph.edges[eid];
 
                         let x_in_subtree = graph.num[u] <= graph.num[x] && graph.num[x] <= h;
                         let y_in_subtree = graph.num[u] <= graph.num[y] && graph.num[y] <= h;
@@ -303,10 +306,9 @@ fn find_split(
                             graph.num[x].max(graph.num[y]),
                         ] == [graph.num[u], graph.num[to]]
                         {
-                            eab = e;
+                            eab = eid;
                         } else {
-                            graph.remove_edge(e);
-                            component.push_edge(e);
+                            component.push_edge(eid, graph, false);
                         }
                     } else {
                         break;
@@ -314,20 +316,18 @@ fn find_split(
                 }
 
                 evirt = graph.new_edge(u, to, None);
-                component.push_edge(evirt);
+                component.push_edge(evirt, graph, true);
                 component.commit(split_components);
             }
 
             if eab != usize::MAX {
                 let mut component = Component::new(Some(ComponentType::P));
-                component.push_edge(eab);
-                graph.remove_edge(eab);
+                component.push_edge(eab, graph, false);
 
-                component.push_edge(evirt);
-                graph.remove_edge(evirt);
+                component.push_edge(evirt, graph, false); // is an old vedge
 
                 evirt = graph.new_edge(u, to, None);
-                component.push_edge(evirt);
+                component.push_edge(evirt, graph, true);
 
                 component.commit(split_components);
             }
@@ -363,12 +363,12 @@ fn find_split(
 
                 estack.pop();
 
-                component.push_edge(eid);
+                component.push_edge(eid, graph, true);
                 graph.remove_edge(eid);
             }
 
             let mut evirt = graph.new_edge(u, graph.numrev[graph.low1[to]], None);
-            component.push_edge(evirt);
+            component.push_edge(evirt, graph, true);
 
             component.commit(split_components);
 
@@ -380,14 +380,12 @@ fn find_split(
                     estack.pop();
                     let mut component = Component::new(Some(ComponentType::P));
 
-                    component.push_edge(eid);
-                    graph.remove_edge(eid);
+                    component.push_edge(eid, graph, false);
 
-                    component.push_edge(evirt);
-                    graph.remove_edge(evirt);
+                    component.push_edge(evirt, graph, false); // is an old vedge
 
                     evirt = graph.new_edge(u, graph.numrev[graph.low1[to]], None);
-                    component.push_edge(evirt);
+                    component.push_edge(evirt, graph, true);
 
                     component.commit(split_components);
                 }
@@ -402,14 +400,12 @@ fn find_split(
 
                 let mut component = Component::new(Some(ComponentType::P));
 
-                component.push_edge(parent_edge);
-                graph.remove_edge(parent_edge);
+                component.push_edge(parent_edge, graph, false);
 
-                component.push_edge(evirt);
-                graph.remove_edge(evirt);
+                component.push_edge(evirt, graph, false); // is an old vedge
 
                 evirt = graph.new_edge(graph.par[u].unwrap(), u, None);
-                component.push_edge(evirt);
+                component.push_edge(evirt, graph, true);
 
                 component.commit(split_components);
 
@@ -427,8 +423,8 @@ fn find_split(
     let mut i = 0;
     while i < graph.adj[u].len() {
         let eid = graph.adj[u][i];
-        if graph.edge_type[eid] == Some(EdgeType::Killed) || eid >= vedges_cutoff {
-            // we don't care about killer nor virtual edges here
+        if eid >= vedges_cutoff {
+            // we don't care about virtual edges here
             i += 1;
             continue;
         }
@@ -506,7 +502,7 @@ pub fn get_triconnected_components(in_graph: &UnGraph) -> (Vec<Component>, Vec<(
         for i in in_graph.edge_references() {
             let (s, t) = (i.source().index(), i.target().index());
             edges.push((s, t));
-            c.push_edge(i.id().index());
+            c.push_edge(i.id().index(), &mut GraphInternal::new(0, 0), true);
         }
 
         if m >= 3 {
@@ -589,18 +585,17 @@ pub fn get_triconnected_components(in_graph: &UnGraph) -> (Vec<Component>, Vec<(
                     let mut component = Component::new(Some(ComponentType::P));
 
                     let (s, t) = graph.edges[i];
-                    let eid = graph.new_edge(s, t, None);
-                    component.push_edge(eid);
-                    graph.adj[t].push(eid); // add t->s edge as well, since we are not rooted yet
+                    let evirt = graph.new_edge(s, t, None);
+                    graph.adj[t].push(evirt); // add t->s edge as well, since we are not rooted yet
 
-                    component.push_edge(i);
-                    graph.remove_edge(i);
+                    component.push_edge(evirt, graph, true);
+
+                    component.push_edge(i, graph, false);
 
                     while i + 1 < len && graph.edges[i + 1] == graph.edges[i] {
                         i += 1;
 
-                        component.push_edge(i);
-                        graph.remove_edge(i);
+                        component.push_edge(i, graph, false);
                     }
 
                     split_components.push(component);
@@ -630,10 +625,6 @@ pub fn get_triconnected_components(in_graph: &UnGraph) -> (Vec<Component>, Vec<(
             let neighbors = graph.adj[u].clone(); // borrow checker doesn't like mutable borrow below
 
             for &eid in &neighbors {
-                if graph.edge_type[eid] == Some(EdgeType::Killed) {
-                    continue; // skip killed edges
-                }
-
                 let to = graph.get_other_vertex(eid, u);
 
                 if graph.edge_type[eid].is_some() {
@@ -676,10 +667,6 @@ pub fn get_triconnected_components(in_graph: &UnGraph) -> (Vec<Component>, Vec<(
 
         // now that for each edge we know its type, we can assure that edges in `edges` always point from source to target
         for (eid, edge) in graph.edges.iter_mut().enumerate() {
-            if graph.edge_type[eid] == Some(EdgeType::Killed) {
-                continue; // skip killed edges
-            }
-
             let (s, t) = (edge.0, edge.1);
             if (graph.edge_type[eid] == Some(EdgeType::Back) && graph.num[s] < graph.num[t])
                 || (graph.edge_type[eid] == Some(EdgeType::Tree) && graph.num[s] > graph.num[t])
@@ -744,7 +731,6 @@ pub fn get_triconnected_components(in_graph: &UnGraph) -> (Vec<Component>, Vec<(
 
             for &eid in neighbors.iter() {
                 let to = graph.get_other_vertex(eid, u);
-                // no killed edges here
 
                 if Some(to) != first_to {
                     graph.starts_path[eid] = true;
@@ -795,8 +781,7 @@ pub fn get_triconnected_components(in_graph: &UnGraph) -> (Vec<Component>, Vec<(
 
         let mut component = Component::new(None);
         while let Some(eid) = estack.pop() {
-            component.push_edge(eid);
-            graph.edge_type[eid] = Some(EdgeType::Killed);
+            component.push_edge(eid, &mut graph, false);
         }
         component.commit(&mut split_components);
 
