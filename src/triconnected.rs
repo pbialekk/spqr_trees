@@ -1,5 +1,3 @@
-use std::mem::{self};
-
 use petgraph::visit::EdgeRef;
 
 use crate::{
@@ -401,7 +399,7 @@ pub fn get_triconnected_components(in_graph: &UnGraph) -> (Vec<Component>, Vec<(
         component.commit(&mut split_components);
     }
 
-    split_components = merge_components(graph.edges.len(), &split_components);
+    merge_components(graph.edges.len(), &mut split_components);
 
     (split_components, graph.edges)
 }
