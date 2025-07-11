@@ -4,8 +4,7 @@ use petgraph::visit::EdgeRef;
 
 use crate::{UnGraph, block_cut::get_block_cut_tree, debugging};
 
-/// Reference: https://epubs.siam.org/doi/10.1137/0202012
-// TODO: describe general idea
+/// Reference paper: https://epubs.siam.org/doi/10.1137/0202012
 
 #[derive(Debug, Clone, PartialEq)]
 pub enum EdgeType {
@@ -97,10 +96,6 @@ impl GraphInternal {
     fn new_edge(&mut self, s: usize, t: usize, put_type: Option<EdgeType>) -> usize {
         let eid = self.edges.len();
 
-        if cfg!(debug_assertions) {
-            println!("[{}] Adding edge ({}, {})", eid, s, t);
-        }
-
         self.edges.push((s, t));
         self.edge_type.push(put_type);
         self.adj[s].push(eid);
@@ -110,19 +105,8 @@ impl GraphInternal {
 
         eid
     }
-    fn kill_edge(&mut self, eid: usize) {
-        if cfg!(debug_assertions) {
-            println!(
-                "Killing edge {}: ({}, {})",
-                eid, self.edges[eid].0, self.edges[eid].1
-            );
-        }
-
-        assert!(
-            self.edge_type[eid] != Some(EdgeType::Killed),
-            "Edge {} is already dead",
-            eid
-        );
+    fn remove_edge(&mut self, eid: usize) {
+        debug_assert!(self.edge_type[eid] != Some(EdgeType::Killed));
 
         self.edge_type[eid] = Some(EdgeType::Killed);
         let (s, t) = self.edges[eid];
@@ -130,12 +114,7 @@ impl GraphInternal {
         self.deg[t] -= 1;
     }
     fn make_tedge(&mut self, eid: usize) {
-        if cfg!(debug_assertions) {
-            println!(
-                "Making edge {} a tree edge: ({}, {})",
-                eid, self.edges[eid].0, self.edges[eid].1
-            );
-        }
+        debug_assert!(self.edge_type[eid] == None);
 
         self.edge_type[eid] = Some(EdgeType::Tree);
         let (s, t) = self.edges[eid];
@@ -144,12 +123,7 @@ impl GraphInternal {
         self.par[t] = Some(s);
     }
     fn make_bedge(&mut self, eid: usize) {
-        if cfg!(debug_assertions) {
-            println!(
-                "Making edge {} a back edge: ({}, {})",
-                eid, self.edges[eid].0, self.edges[eid].1
-            );
-        }
+        debug_assert!(self.edge_type[eid] == None);
 
         self.edge_type[eid] = Some(EdgeType::Back);
         let (s, t) = self.edges[eid];
@@ -158,32 +132,28 @@ impl GraphInternal {
             self.high[t].push(eid);
         }
     }
-    fn get_other(&self, eid: usize, u: usize) -> usize {
+    fn get_other_vertex(&self, eid: usize, u: usize) -> usize {
         let (s, t) = self.edges[eid];
         if s == u { t } else { s }
     }
-    fn first_alive(&self, root: usize, u: usize) -> usize {
+    fn first_alive(&self, root: usize, u: usize) -> Option<usize> {
         if u == root {
-            return usize::MAX; // every tree edge from root starts a new path
+            return None;
         }
         for &eid in &self.adj[u] {
             if self.edge_type[eid] == Some(EdgeType::Killed) {
                 continue;
             }
-            return self.edges[eid].1;
+            return Some(self.edges[eid].1);
         }
-        return usize::MAX;
+        None
     }
     fn get_high(&mut self, u: usize) -> usize {
         while let Some(&eid) = self.high[u].last() {
             if self.edge_type[eid] == Some(EdgeType::Killed) {
                 self.high[u].pop();
-
-                if cfg!(debug_assertions) {
-                    println!("Removing killed edge {} from highpoint of {}", eid, u);
-                }
             } else {
-                return self.num[self.get_other(eid, u)];
+                return self.num[self.get_other_vertex(eid, u)];
             }
         }
         0
@@ -214,9 +184,6 @@ fn find_split(
         ) -> (usize, usize, usize) {
             while let Some(&(h, a, b)) = tstack.last() {
                 if a > cutoff {
-                    if cfg!(debug_assertions) {
-                        println!("Popping tstack: ({}, {}, {})", h, a, b);
-                    }
                     tstack.pop();
                     max_h = h.max(max_h);
                     last_b = b;
@@ -240,13 +207,6 @@ fn find_split(
         };
 
         tstack.push((max_h, a, last_b));
-
-        if cfg!(debug_assertions) {
-            println!(
-                "Pushing to tstack: ({}, {}, {}) for edge {} from {} to {}",
-                max_h, a, last_b, eid, u, to
-            );
-        }
     }
 
     fn ensure_highpoint(
@@ -258,13 +218,6 @@ fn find_split(
 
         while let Some(&(h, a, b)) = tstack.last() {
             if a != graph.num[u] && b != graph.num[u] && u_high > h {
-                if cfg!(debug_assertions) {
-                    println!(
-                        "Popping tstack due to ensure_highpoint: ({}, {}, {})",
-                        h, a, b
-                    );
-                }
-
                 tstack.pop();
             } else {
                 break;
@@ -293,20 +246,13 @@ fn find_split(
             };
 
             let cond_1 = a == graph.num[u];
-            let cond_2 =
-                graph.deg[to] == 2 && graph.num[graph.first_alive(root, to)] > graph.num[to];
+            let cond_2 = graph.deg[to] == 2
+                && graph.num[graph.first_alive(root, to).unwrap()] > graph.num[to];
 
             if !(cond_1 || cond_2) {
                 break;
             }
             if a == graph.num[u] && graph.par[graph.numrev[b]] == Some(u) {
-                if cfg!(debug_assertions) {
-                    println!(
-                        "Popping {} {} from tstack: no inner vertex exists",
-                        graph.numrev[a], graph.numrev[b]
-                    );
-                }
-
                 tstack.pop();
                 continue;
             }
@@ -314,17 +260,13 @@ fn find_split(
             let mut eab = usize::MAX;
             let mut evirt = usize::MAX;
             if cond_2 {
-                to = graph.first_alive(root, to);
-
-                if cfg!(debug_assertions) {
-                    println!("Type 2 pair found (easy one) ({}, {})", u, to);
-                }
+                to = graph.first_alive(root, to).unwrap();
 
                 let mut component = Component::new(Some(ComponentType::S));
 
                 for _ in 0..2 {
                     let e = estack.pop().unwrap();
-                    graph.kill_edge(e);
+                    graph.remove_edge(e);
                     component.push_edge(e);
                 }
 
@@ -341,9 +283,6 @@ fn find_split(
                 }
             } else {
                 to = graph.numrev[b];
-                if cfg!(debug_assertions) {
-                    println!("Type 2 pair found (hard one) ({}, {})", u, to);
-                }
 
                 tstack.pop();
                 let mut component = Component::new(None);
@@ -366,7 +305,7 @@ fn find_split(
                         {
                             eab = e;
                         } else {
-                            graph.kill_edge(e);
+                            graph.remove_edge(e);
                             component.push_edge(e);
                         }
                     } else {
@@ -382,10 +321,10 @@ fn find_split(
             if eab != usize::MAX {
                 let mut component = Component::new(Some(ComponentType::P));
                 component.push_edge(eab);
-                graph.kill_edge(eab);
+                graph.remove_edge(eab);
 
                 component.push_edge(evirt);
-                graph.kill_edge(evirt);
+                graph.remove_edge(evirt);
 
                 evirt = graph.new_edge(u, to, None);
                 component.push_edge(evirt);
@@ -410,13 +349,6 @@ fn find_split(
             && graph.low1[to] < graph.num[u]
             && (Some(root) != graph.par[u] || t_edges_left != 0)
         {
-            if cfg!(debug_assertions) {
-                println!(
-                    "Type 1 pair found ({}, {})",
-                    graph.numrev[graph.low1[to]], u
-                );
-            }
-
             let mut component = Component::new(None);
             while let Some(&eid) = estack.last() {
                 let (x, y) = graph.edges[eid];
@@ -432,7 +364,7 @@ fn find_split(
                 estack.pop();
 
                 component.push_edge(eid);
-                graph.kill_edge(eid);
+                graph.remove_edge(eid);
             }
 
             let mut evirt = graph.new_edge(u, graph.numrev[graph.low1[to]], None);
@@ -449,10 +381,10 @@ fn find_split(
                     let mut component = Component::new(Some(ComponentType::P));
 
                     component.push_edge(eid);
-                    graph.kill_edge(eid);
+                    graph.remove_edge(eid);
 
                     component.push_edge(evirt);
-                    graph.kill_edge(evirt);
+                    graph.remove_edge(evirt);
 
                     evirt = graph.new_edge(u, graph.numrev[graph.low1[to]], None);
                     component.push_edge(evirt);
@@ -471,10 +403,10 @@ fn find_split(
                 let mut component = Component::new(Some(ComponentType::P));
 
                 component.push_edge(parent_edge);
-                graph.kill_edge(parent_edge);
+                graph.remove_edge(parent_edge);
 
                 component.push_edge(evirt);
-                graph.kill_edge(evirt);
+                graph.remove_edge(evirt);
 
                 evirt = graph.new_edge(graph.par[u].unwrap(), u, None);
                 component.push_edge(evirt);
@@ -501,7 +433,7 @@ fn find_split(
             continue;
         }
 
-        let to = graph.get_other(eid, u);
+        let to = graph.get_other_vertex(eid, u);
         if graph.starts_path[eid] {
             update_tstack(u, to, eid, tstack, graph);
         }
@@ -565,10 +497,6 @@ pub fn get_triconnected_components(in_graph: &UnGraph) -> (Vec<Component>, Vec<(
 
     let mut split_components = Vec::new();
 
-    if cfg!(debug_assertions) {
-        println!("{} nodes, {} edges", n, m);
-    }
-
     assert!(get_block_cut_tree(&in_graph).block_count == 1);
     assert!(n >= 2);
 
@@ -605,20 +533,37 @@ pub fn get_triconnected_components(in_graph: &UnGraph) -> (Vec<Component>, Vec<(
     // self-explanatory
 
     {
-        if cfg!(debug_assertions) {
-            println!("Edges before sorting and handling duplicates:");
-            for (eid, edge) in graph.edges.iter().enumerate() {
-                if graph.edge_type[eid] == Some(EdgeType::Killed) {
-                    continue; // skip killed edges
-                }
-
-                println!("{}:\t ({}, {})", eid, edge.0, edge.1);
-            }
-        }
-
         fn sort_pairs_upperbounded(edges: &mut Vec<(usize, usize)>, upper_bound: usize) {
-            // TODO: implement a bucketsort here
-            edges.sort();
+            let m = edges.len();
+
+            // stable sort by second
+            let mut cnt = vec![0; upper_bound];
+            for &(s, t) in edges.iter() {
+                cnt[t] += 1;
+            }
+            for i in 1..upper_bound {
+                cnt[i] += cnt[i - 1];
+            }
+            let mut tmp = vec![(0, 0); m];
+            for &(s, t) in edges.iter().rev() {
+                cnt[t] -= 1;
+                tmp[cnt[t]] = (s, t);
+            }
+
+            // stable sort by first
+            cnt.fill(0);
+            for &(s, t) in tmp.iter() {
+                cnt[s] += 1;
+            }
+            for i in 1..upper_bound {
+                cnt[i] += cnt[i - 1];
+            }
+            for &(s, t) in tmp.iter().rev() {
+                cnt[s] -= 1;
+                edges[cnt[s]] = (s, t);
+            }
+
+            debug_assert!(edges.is_sorted());
         }
 
         sort_pairs_upperbounded(&mut graph.edges, n);
@@ -649,13 +594,13 @@ pub fn get_triconnected_components(in_graph: &UnGraph) -> (Vec<Component>, Vec<(
                     graph.adj[t].push(eid); // add t->s edge as well, since we are not rooted yet
 
                     component.push_edge(i);
-                    graph.kill_edge(i);
+                    graph.remove_edge(i);
 
                     while i + 1 < len && graph.edges[i + 1] == graph.edges[i] {
                         i += 1;
 
                         component.push_edge(i);
-                        graph.kill_edge(i);
+                        graph.remove_edge(i);
                     }
 
                     split_components.push(component);
@@ -669,19 +614,7 @@ pub fn get_triconnected_components(in_graph: &UnGraph) -> (Vec<Component>, Vec<(
         }
 
         handle_duplicate_edges(&mut graph, &mut split_components);
-
-        if cfg!(debug_assertions) {
-            println!("Edges after sorting and handling duplicates:");
-            for (eid, edge) in graph.edges.iter().enumerate() {
-                if graph.edge_type[eid] == Some(EdgeType::Killed) {
-                    continue; // skip killed edges
-                }
-
-                println!("{}:\t ({}, {})", eid, edge.0, edge.1);
-            }
-        }
     }
-    let m = graph.edges.len();
 
     // first dfs, computes num, low1, low2, sub, par, deg, edge_type and fixes the edges' direction
     {
@@ -701,7 +634,7 @@ pub fn get_triconnected_components(in_graph: &UnGraph) -> (Vec<Component>, Vec<(
                     continue; // skip killed edges
                 }
 
-                let to = graph.get_other(eid, u);
+                let to = graph.get_other_vertex(eid, u);
 
                 if graph.edge_type[eid].is_some() {
                     continue; // already visited 
@@ -754,23 +687,6 @@ pub fn get_triconnected_components(in_graph: &UnGraph) -> (Vec<Component>, Vec<(
                 mem::swap(&mut edge.0, &mut edge.1);
             }
         }
-
-        if cfg!(debug_assertions) {
-            println!("DFS1 finished");
-            println!("u\t num\t low1\t low2\t sub\t deg");
-            for u in 0..n {
-                println!(
-                    "{}\t {}\t {}\t {}\t {}\t {}",
-                    u, graph.num[u], graph.low1[u], graph.low2[u], graph.sub[u], graph.deg[u]
-                );
-            }
-
-            println!("eid\t (s, t)\t edge_type");
-            for eid in 0..graph.edges.len() {
-                let (s, t) = graph.edges[eid];
-                println!("{}:\t ({}, {})\t{:?}", eid, s, t, graph.edge_type[eid]);
-            }
-        }
     }
 
     // compute acceptable adjacency list structure
@@ -807,21 +723,7 @@ pub fn get_triconnected_components(in_graph: &UnGraph) -> (Vec<Component>, Vec<(
             }
         }
 
-        if cfg!(debug_assertions) {
-            println!("Adjacency list before sorting:");
-            for (u, edges) in graph.adj.iter().enumerate() {
-                println!("{}: {:?}", u, edges);
-            }
-        }
-
         graph.adj = new_adj;
-
-        if cfg!(debug_assertions) {
-            println!("Adjacency list after sorting:");
-            for (u, edges) in graph.adj.iter().enumerate() {
-                println!("{}: {:?}", u, edges);
-            }
-        }
     }
 
     // pathfinder part: calculate high(v), newnum(v), starts_path(e)
@@ -841,10 +743,10 @@ pub fn get_triconnected_components(in_graph: &UnGraph) -> (Vec<Component>, Vec<(
             let neighbors = graph.adj[u].clone(); // borrow checker doesn't like mutable borrow below
 
             for &eid in neighbors.iter() {
-                let to = graph.get_other(eid, u);
+                let to = graph.get_other_vertex(eid, u);
                 // no killed edges here
 
-                if to != first_to {
+                if Some(to) != first_to {
                     graph.starts_path[eid] = true;
                 }
 
@@ -875,53 +777,6 @@ pub fn get_triconnected_components(in_graph: &UnGraph) -> (Vec<Component>, Vec<(
             graph.numrev[graph.num[u]] = u;
             graph.high[u].reverse();
         }
-
-        if cfg!(debug_assertions) {
-            println!("Pathfinder finished");
-            println!("u\t num\t low1\t low2\t sub\t deg\t high");
-            for u in 0..n {
-                println!(
-                    "{}\t {}\t {}\t {}\t {}\t {}\t {:?}",
-                    u,
-                    graph.num[u],
-                    graph.low1[u],
-                    graph.low2[u],
-                    graph.sub[u],
-                    graph.deg[u],
-                    graph.high[u],
-                );
-            }
-
-            println!("eid\t (s, t)\t edge_type\t starts_path");
-            for eid in 0..graph.edges.len() {
-                let (s, t) = graph.edges[eid];
-                println!(
-                    "{}:\t ({}, {})\t{:?}\t {}",
-                    eid, s, t, graph.edge_type[eid], graph.starts_path[eid]
-                );
-            }
-        }
-    }
-
-    if cfg!(debug_assertions) {
-        let dot_output = debugging::draw(
-            &graph.adj,
-            &graph.edges,
-            &graph.num,
-            &graph.high,
-            &graph.edge_type,
-            &graph.starts_path,
-            &graph.low1,
-            &graph.low2,
-            &graph.par,
-            &graph.sub,
-        );
-
-        std::fs::write("pre_last.dot", dot_output).expect("Unable to write to pre_last.dot");
-        std::process::Command::new("dot")
-            .args(&["pre_last.dot", "-Tpng", "-o", "pre_last.png"])
-            .status()
-            .expect("failed to execute dot");
     }
 
     // detect split_components
@@ -945,97 +800,62 @@ pub fn get_triconnected_components(in_graph: &UnGraph) -> (Vec<Component>, Vec<(
         }
         component.commit(&mut split_components);
 
-        if cfg!(debug_assertions) {
-            println!("eid\t (s, t)\t edge_type\t starts_path");
-            for eid in 0..graph.edges.len() {
-                let (s, t) = graph.edges[eid];
-                println!(
-                    "{}:\t ({}, {})\t{:?}\t {}",
-                    eid, s, t, graph.edge_type[eid], graph.starts_path[eid]
-                );
-            }
-
-            println!("Split components found:");
-            for (i, component) in split_components.iter().enumerate() {
-                println!(
-                    "Component {}: type: {:?}, edges: {:?}",
-                    i, component.component_type, component.edges
-                );
-            }
-        }
-
-        // merge S and P nodes
+        // Merge S and P nodes into larger components of the same type
         {
-            let mut final_components = vec![];
-
-            let mut pos = vec![0; graph.edges.len()];
-            let XD_split_components = split_components.clone();
-
+            let mut edge_to_component = vec![None; graph.edges.len()];
             for (i, component) in split_components.iter().enumerate() {
-                for &eid in component.edges.iter() {
-                    pos[eid] = i; // vedges occur twice
+                for &eid in &component.edges {
+                    edge_to_component[eid] = Some(i);
                 }
             }
 
-            // TODO: make it faster, maybe use linked lists? xd
-            let mut dead = vec![false; split_components.len()];
+            let mut merged = vec![false; split_components.len()];
+            let mut final_components = Vec::new();
+
             for (i, component) in split_components.iter().enumerate() {
+                if merged[i] {
+                    continue;
+                }
                 if component.component_type == Some(ComponentType::R) {
                     final_components.push(component.clone());
-                    continue; // tcc 
-                }
-                if dead[i] {
-                    continue; // already dead
+                    continue;
                 }
 
-                let mut new_component = component.clone();
+                let mut collected_edges = component.edges.clone();
+
+                merged[i] = true;
+
                 let mut j = 0;
+                while j < collected_edges.len() {
+                    let eid = collected_edges[j];
+                    if let Some(other_idx) = edge_to_component[eid] {
+                        if other_idx != i
+                            && !merged[other_idx]
+                            && split_components[other_idx].component_type
+                                == component.component_type
+                        {
+                            merged[other_idx] = true;
 
-                while j < new_component.edges.len() {
-                    let eid = new_component.edges[j];
-                    if pos[eid] != i {
-                        let guy = pos[eid];
-
-                        let guy_component = &XD_split_components[guy];
-
-                        if !dead[guy] && guy_component.component_type == component.component_type {
-                            dead[guy] = true;
-                            new_component
-                                .edges
-                                .extend(guy_component.edges.iter().filter(|&&e| e != eid));
-                            // graph.kill_edge(eid);
+                            // Add all edges except the current one to avoid duplicates
+                            collected_edges.extend(
+                                split_components[other_idx]
+                                    .edges
+                                    .iter()
+                                    .filter(|&&e| e != eid),
+                            );
                         }
                     }
-
                     j += 1;
                 }
 
-                if !new_component.edges.is_empty() {
+                if !collected_edges.is_empty() {
+                    let mut new_component = component.clone();
+                    new_component.edges = collected_edges;
                     final_components.push(new_component);
                 }
             }
 
             split_components = final_components;
-
-            if cfg!(debug_assertions) {
-                println!("Final components after merging S and P nodes:");
-                for (i, component) in split_components.iter().enumerate() {
-                    println!(
-                        "Component {}: type: {:?}, edges: {:?}",
-                        i, component.component_type, component.edges
-                    );
-                }
-            }
-        }
-
-        if cfg!(debug_assertions) && false {
-            let dot_output = debugging::draw_components(&split_components, n, &graph.edges);
-
-            std::fs::write("post_last.dot", dot_output).expect("Unable to write to post_last.dot");
-            std::process::Command::new("dot")
-                .args(&["post_last.dot", "-Tpng", "-o", "post_last.png"])
-                .status()
-                .expect("failed to execute dot");
         }
 
         (split_components, graph.edges)
