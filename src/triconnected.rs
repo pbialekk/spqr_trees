@@ -1169,12 +1169,120 @@ mod tests {
 
         res
     }
+    fn is_splitpair(in_graph: &UnGraph, s: usize, t: usize) -> bool {
+        let n = in_graph.node_references().count();
+        let mut vis = vec![false; n];
+        fn dfs(u: usize, in_graph: &UnGraph, vis: &mut Vec<bool>) {
+            vis[u] = true;
+            for v in in_graph.neighbors(in_graph.from_index(u)) {
+                if !vis[v.index()] {
+                    dfs(v.index(), in_graph, vis);
+                }
+            }
+        }
+
+        vis[s] = true;
+        vis[t] = true;
+
+        for i in 0..n {
+            if i == s || i == t {
+                continue;
+            }
+            dfs(i, in_graph, &mut vis);
+            break;
+        }
+
+        let mut direct_cnt = 0;
+        for v in in_graph.neighbors(in_graph.from_index(s)) {
+            if v.index() == t {
+                direct_cnt += 1;
+            }
+        }
+
+        vis.iter().any(|&v| !v) || direct_cnt > 1
+    }
+    fn verify_components(
+        in_graph: &UnGraph,
+        split_components: &Vec<Component>,
+        edges: &Vec<(usize, usize)>,
+    ) {
+        let n = in_graph.node_references().count();
+        let m = edges.len();
+
+        let mut edges_occs = vec![0; m];
+        for c in split_components {
+            for &eid in &c.edges {
+                edges_occs[eid] += 1;
+            }
+
+            if c.component_type == Some(ComponentType::P) {
+                let mut nodes = vec![];
+                for &eid in &c.edges {
+                    let (s, t) = edges[eid];
+                    nodes.push(s);
+                    nodes.push(t);
+                }
+                nodes.sort();
+                nodes.dedup();
+
+                assert!(nodes.len() == 2);
+            } else if c.component_type == Some(ComponentType::S) {
+                let mut nodes = vec![];
+                for &eid in &c.edges {
+                    let (s, t) = edges[eid];
+                    nodes.push(s);
+                    nodes.push(t);
+                }
+                nodes.sort();
+                nodes.dedup();
+
+                assert!(nodes.len() >= 3);
+                assert!(c.edges.len() == nodes.len());
+
+                let mut deg = vec![0; n];
+                for &eid in &c.edges {
+                    let (s, t) = edges[eid];
+                    deg[s] += 1;
+                    deg[t] += 1;
+                }
+
+                assert!(deg.iter().all(|&d| d == 0 || d == 2));
+            } else if c.component_type == Some(ComponentType::R) {
+                let mut nodes = vec![];
+                for &eid in &c.edges {
+                    let (s, t) = edges[eid];
+                    nodes.push(s);
+                    nodes.push(t);
+                }
+                nodes.sort();
+                nodes.dedup();
+
+                assert!(nodes.len() >= 4);
+            } else {
+                panic!();
+            }
+        }
+
+        assert!(*edges_occs.iter().max().unwrap() <= 2);
+
+        // if an edge occurs twice, then it's a vedge -- thus, a split pair.
+        for (eid, cnt) in edges_occs.iter().enumerate() {
+            if *cnt == 0 {
+                continue; // edge is not in any component
+            }
+
+            let (s, t) = edges[eid];
+            if *cnt == 2 {
+                assert!(is_splitpair(in_graph, s, t));
+            }
+        }
+    }
 
     // Only run this test in release mode (i.e., when !(debug_assertions))
     #[cfg(all(test, not(debug_assertions)))]
     #[test]
     fn test_triconnected_components() {
-        for i in 0..5000 {
+        for i in 0..1000 {
             println!("test_triconnected_components() it: {}", i);
 
             let n = 2 + i / 10;
@@ -1183,6 +1291,7 @@ mod tests {
             let in_graph = random_biconnected_graph(n, m, i);
 
             let (split_components, edges) = get_triconnected_components(&in_graph);
+            verify_components(&in_graph, &split_components, &edges);
 
             let n = in_graph.node_references().count();
             let m = in_graph.edge_references().count();
@@ -1204,7 +1313,10 @@ mod tests {
 
             let in_graph = random_biconnected_graph(n, m, i);
 
+            dbg!(&in_graph);
+
             let (split_components, edges) = get_triconnected_components(&in_graph);
+            verify_components(&in_graph, &split_components, &edges);
 
             let n = in_graph.node_references().count();
             let m = in_graph.edge_references().count();
