@@ -117,6 +117,13 @@ impl GraphInternal {
                 eid, self.edges[eid].0, self.edges[eid].1
             );
         }
+
+        assert!(
+            self.edge_type[eid] != Some(EdgeType::Killed),
+            "Edge {} is already dead",
+            eid
+        );
+
         self.edge_type[eid] = Some(EdgeType::Killed);
         let (s, t) = self.edges[eid];
         self.deg[s] -= 1;
@@ -233,6 +240,13 @@ fn find_split(
         };
 
         tstack.push((max_h, a, last_b));
+
+        if cfg!(debug_assertions) {
+            println!(
+                "Pushing to tstack: ({}, {}, {}) for edge {} from {} to {}",
+                max_h, a, last_b, eid, u, to
+            );
+        }
     }
 
     fn ensure_highpoint(
@@ -243,7 +257,7 @@ fn find_split(
         let u_high = graph.get_high(u);
 
         while let Some(&(h, a, b)) = tstack.last() {
-            if a != u && b != u && u_high > h {
+            if a != graph.num[u] && b != graph.num[u] && u_high > h {
                 if cfg!(debug_assertions) {
                     println!(
                         "Popping tstack due to ensure_highpoint: ({}, {}, {})",
@@ -329,7 +343,6 @@ fn find_split(
                 to = graph.numrev[b];
                 if cfg!(debug_assertions) {
                     println!("Type 2 pair found (hard one) ({}, {})", u, to);
-                    dbg!(h);
                 }
 
                 tstack.pop();
@@ -345,7 +358,6 @@ fn find_split(
                         }
 
                         estack.pop();
-                        graph.kill_edge(e);
 
                         if [
                             graph.num[x].min(graph.num[y]),
@@ -354,6 +366,7 @@ fn find_split(
                         {
                             eab = e;
                         } else {
+                            graph.kill_edge(e);
                             component.push_edge(e);
                         }
                     } else {
@@ -494,7 +507,7 @@ fn find_split(
         }
 
         if graph.edge_type[eid] == Some(EdgeType::Tree) {
-            let mut empty_tstack = vec![];
+            let mut new_tstack = vec![];
             find_split(
                 root,
                 to,
@@ -502,7 +515,7 @@ fn find_split(
                 graph,
                 estack,
                 if graph.starts_path[eid] {
-                    &mut empty_tstack
+                    &mut new_tstack
                 } else {
                     tstack
                 },
@@ -513,7 +526,19 @@ fn find_split(
             let push_eid = graph.par_edge[to].unwrap(); // eid could be killed by the multiple edge case in check_type_x
             estack.push(push_eid);
 
-            check_type_2(root, u, to, tstack, estack, graph, split_components);
+            check_type_2(
+                root,
+                u,
+                to,
+                if graph.starts_path[eid] {
+                    &mut new_tstack
+                } else {
+                    tstack
+                },
+                estack,
+                graph,
+                split_components,
+            );
             check_type_1(
                 root,
                 u,
@@ -1145,14 +1170,37 @@ mod tests {
         res
     }
 
-    // it's advised to run this one with --release flag
+    // Only run this test in release mode (i.e., when !(debug_assertions))
+    #[cfg(all(test, not(debug_assertions)))]
     #[test]
     fn test_triconnected_components() {
-        for i in 0..1000 {
+        for i in 0..5000 {
             println!("test_triconnected_components() it: {}", i);
 
-            let n = 50;
-            let m = 49 + i;
+            let n = 2 + i / 10;
+            let m: usize = 1 + i;
+
+            let in_graph = random_biconnected_graph(n, m, i);
+
+            let (split_components, edges) = get_triconnected_components(&in_graph);
+
+            let n = in_graph.node_references().count();
+            let m = in_graph.edge_references().count();
+
+            let brute_mat = are_triconnected_brute(&in_graph);
+            let fast_mat = answer_fast(n, m, &split_components, &edges);
+
+            assert_eq!(brute_mat, fast_mat);
+        }
+    }
+
+    #[test]
+    fn test_triconnected_components_light() {
+        for i in 0..100 {
+            println!("test_triconnected_components_light() it: {}", i);
+
+            let n = 2 + i / 10;
+            let m: usize = 1 + i;
 
             let in_graph = random_biconnected_graph(n, m, i);
 
