@@ -59,7 +59,7 @@ impl GraphInternal {
 
             high: vec![Vec::new(); n], // pathfinder starts here
             numrev: vec![0; n],        // reverse mapping from num to original vertex
-            starts_path: vec![false; m],
+            starts_path: Vec::new(),
         }
     }
     pub fn new_edge(&mut self, s: usize, t: usize, put_type: Option<EdgeType>) -> usize {
@@ -82,7 +82,6 @@ impl GraphInternal {
         let (s, t) = self.edges[eid];
         self.deg[s] -= 1;
         self.deg[t] -= 1;
-        self.m -= 1;
     }
     pub fn make_tedge(&mut self, eid: usize) {
         debug_assert!(self.edge_type[eid] == None);
