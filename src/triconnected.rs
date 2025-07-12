@@ -272,8 +272,7 @@ fn find_components(
         let eid = graph.adj[u][i];
         if eid >= vedges_cutoff {
             // we don't care about virtual edges here
-            i += 1;
-            continue;
+            break;
         }
 
         let to = graph.get_other_vertex(eid, u);
@@ -357,10 +356,24 @@ fn find_components(
 ///
 /// After merging all P nodes with P nodes and S nodes with S nodes, the final set of triconnected components is obtained.
 ///
+/// ## Output
+/// Returns a tuple `(split_components, edges, is_real_edge, real_to_split_component)` where:
+/// - `split_components`: A vector of `Component` structs, each representing a triconnected component (P, S, or R node).
+/// - `edges`: A vector of `(usize, usize)` pairs, where each pair represents the endpoints of an edge in the original or augmented (virtual) graph. The indices in `Component.edges` refer to this vector.
+/// - `is_real_edge`: A boolean vector indicating whether each edge in the `edges` vector is a real edge from the original graph or a virtual edge added during the splitting process.
+/// - `real_to_split_component`: A vector mapping each real edge to the split component it belongs to, or `None` if the edge is a virtual edge. The indices in this vector correspond to the indices in the `edges` vector.
+///
 /// ## Reference
 /// - [Hopcroft, J., & Tarjan, R. (1973). Dividing a Graph into Triconnected Components. SIAM Journal on Computing, 2(3), 135–158.](https://epubs.siam.org/doi/10.1137/0202012)
 /// - Explaining Hopcroft, Tarjan, Gutwenger, and Mutzel’s SPQR Decomposition Algorithm (https://shoyamanishi.github.io/wailea/docs/spqr_explained/HTGMExplained.pdf)
-pub fn get_triconnected_components(in_graph: &UnGraph) -> (Vec<Component>, Vec<(usize, usize)>) {
+pub fn get_triconnected_components(
+    in_graph: &UnGraph,
+) -> (
+    Vec<Component>,
+    Vec<(usize, usize)>,
+    Vec<bool>,
+    Vec<Option<usize>>,
+) {
     let n = in_graph.node_count();
     let m = in_graph.edge_count();
     let root = 0;
@@ -380,9 +393,9 @@ pub fn get_triconnected_components(in_graph: &UnGraph) -> (Vec<Component>, Vec<(
         }
 
         if m >= 3 {
-            return (vec![c], edges);
+            return (vec![c], edges, vec![true; m], vec![Some(0); m]);
         } else {
-            return (vec![], edges);
+            return (vec![], edges, vec![true; m], vec![Some(0); m]);
         }
     }
 
@@ -405,7 +418,7 @@ pub fn get_triconnected_components(in_graph: &UnGraph) -> (Vec<Component>, Vec<(
     find_components(
         root,
         root,
-        graph.edges.len(),
+        graph.m,
         &mut graph,
         &mut estack,
         &mut tstack,
@@ -418,9 +431,31 @@ pub fn get_triconnected_components(in_graph: &UnGraph) -> (Vec<Component>, Vec<(
     }
     component.commit(&mut split_components);
 
-    merge_components(graph.edges.len(), &mut split_components);
+    merge_components(graph.m, &mut split_components);
 
-    (split_components, graph.edges)
+    let mut is_real_edge = vec![false; graph.m];
+    let mut real_to_split_component = vec![None; graph.m];
+
+    let mut edges_occs = vec![0; graph.m];
+    for (i, c) in split_components.iter().enumerate() {
+        for &eid in &c.edges {
+            edges_occs[eid] += 1;
+
+            if edges_occs[eid] > 1 {
+                is_real_edge[eid] = false; // this is a virtual edge
+                real_to_split_component[eid] = None;
+            }
+            is_real_edge[eid] = true;
+            real_to_split_component[eid] = Some(i);
+        }
+    }
+
+    (
+        split_components,
+        graph.edges,
+        is_real_edge,
+        real_to_split_component,
+    )
 }
 
 #[cfg(test)]
@@ -670,7 +705,7 @@ mod tests {
 
             let in_graph = random_biconnected_graph(n, m, i);
 
-            let (split_components, edges) = get_triconnected_components(&in_graph);
+            let (split_components, edges, _, _) = get_triconnected_components(&in_graph);
             verify_components(&in_graph, &split_components, &edges);
 
             let n = in_graph.node_references().count();
@@ -695,7 +730,7 @@ mod tests {
 
             dbg!(&in_graph);
 
-            let (split_components, edges) = get_triconnected_components(&in_graph);
+            let (split_components, edges, _, _) = get_triconnected_components(&in_graph);
             verify_components(&in_graph, &split_components, &edges);
 
             let n = in_graph.node_references().count();
