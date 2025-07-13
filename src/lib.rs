@@ -13,10 +13,12 @@
 pub mod block_cut;
 pub mod input;
 pub mod output;
-pub mod palm_tree;
 
 pub mod triconnected;
-mod triconnected_blocks;
+pub mod triconnected_blocks;
+
+pub mod spqr_blocks;
+pub mod spqr_tree;
 
 pub mod types;
 

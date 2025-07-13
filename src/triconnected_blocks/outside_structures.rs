@@ -62,3 +62,19 @@ impl Component {
         split_components.push(self.clone());
     }
 }
+
+/// Holds the triconnected components of a graph.
+///
+/// Contains a list of components, edges, and additional metadata about the edges.
+///
+/// - `components`: List of components in the triconnected decomposition.
+/// - `edges`: List of edges in the original graph.
+/// - `is_real_edge`: Indicates if an edge is a real edge in the original graph.
+/// - `real_to_split`: Maps real edges to their corresponding split components, if any.
+#[derive(Debug, Clone)]
+pub struct TriconnectedComponents {
+    pub components: Vec<Component>,
+    pub edges: Vec<(usize, usize)>,
+    pub is_real_edge: Vec<bool>,
+    pub real_to_split: Vec<Option<usize>>,
+}

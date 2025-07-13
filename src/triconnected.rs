@@ -8,7 +8,7 @@ use crate::{
         graph_internal::GraphInternal,
         handle_duplicate_edges::handle_duplicate_edges,
         merge_components::merge_components,
-        outside_structures::{Component, ComponentType, EdgeType},
+        outside_structures::{Component, ComponentType, EdgeType, TriconnectedComponents},
         palm_dfs::run_palm_dfs,
         pathfinder::run_pathfinder,
     },
@@ -357,23 +357,12 @@ fn find_components(
 /// After merging all P nodes with P nodes and S nodes with S nodes, the final set of triconnected components is obtained.
 ///
 /// ## Output
-/// Returns a tuple `(split_components, edges, is_real_edge, real_to_split_component)` where:
-/// - `split_components`: A vector of `Component` structs, each representing a triconnected component (P, S, or R node).
-/// - `edges`: A vector of `(usize, usize)` pairs, where each pair represents the endpoints of an edge in the original or augmented (virtual) graph. The indices in `Component.edges` refer to this vector.
-/// - `is_real_edge`: A boolean vector indicating whether each edge in the `edges` vector is a real edge from the original graph or a virtual edge added during the splitting process.
-/// - `real_to_split_component`: A vector mapping each real edge to the split component it belongs to, or `None` if the edge is a virtual edge. The indices in this vector correspond to the indices in the `edges` vector.
+/// Returns a tuple struct `TriconnectedComponents`
 ///
 /// ## Reference
 /// - [Hopcroft, J., & Tarjan, R. (1973). Dividing a Graph into Triconnected Components. SIAM Journal on Computing, 2(3), 135–158.](https://epubs.siam.org/doi/10.1137/0202012)
 /// - Explaining Hopcroft, Tarjan, Gutwenger, and Mutzel’s SPQR Decomposition Algorithm (https://shoyamanishi.github.io/wailea/docs/spqr_explained/HTGMExplained.pdf)
-pub fn get_triconnected_components(
-    in_graph: &UnGraph,
-) -> (
-    Vec<Component>,
-    Vec<(usize, usize)>,
-    Vec<bool>,
-    Vec<Option<usize>>,
-) {
+pub fn get_triconnected_components(in_graph: &UnGraph) -> TriconnectedComponents {
     let n = in_graph.node_count();
     let m = in_graph.edge_count();
     let root = 0;
@@ -393,9 +382,19 @@ pub fn get_triconnected_components(
         }
 
         if m >= 3 {
-            return (vec![c], edges, vec![true; m], vec![Some(0); m]);
+            return TriconnectedComponents {
+                components: vec![c],
+                edges,
+                is_real_edge: vec![true; m],
+                real_to_split: vec![Some(0); m],
+            };
         } else {
-            return (vec![], edges, vec![true; m], vec![Some(0); m]);
+            return TriconnectedComponents {
+                components: vec![],
+                edges,
+                is_real_edge: vec![true; m],
+                real_to_split: vec![Some(0); m],
+            };
         }
     }
 
@@ -450,12 +449,12 @@ pub fn get_triconnected_components(
         }
     }
 
-    (
-        split_components,
-        graph.edges,
+    TriconnectedComponents {
+        components: split_components,
+        edges: graph.edges,
         is_real_edge,
-        real_to_split_component,
-    )
+        real_to_split: real_to_split_component,
+    }
 }
 
 #[cfg(test)]
@@ -683,13 +682,11 @@ mod tests {
 
         // if an edge occurs twice, then it's a vedge -- thus, a split pair.
         for (eid, cnt) in edges_occs.iter().enumerate() {
-            if *cnt == 0 {
-                continue; // edge is not in any component
-            }
-
             let (s, t) = edges[eid];
             if *cnt == 2 {
                 assert!(is_splitpair(in_graph, s, t));
+            } else {
+                assert!(*cnt <= 1);
             }
         }
     }
@@ -705,14 +702,14 @@ mod tests {
 
             let in_graph = random_biconnected_graph(n, m, i);
 
-            let (split_components, edges, _, _) = get_triconnected_components(&in_graph);
-            verify_components(&in_graph, &split_components, &edges);
+            let tricon = get_triconnected_components(&in_graph);
+            verify_components(&in_graph, &tricon.components, &tricon.edges);
 
             let n = in_graph.node_references().count();
             let m = in_graph.edge_references().count();
 
             let brute_mat = are_triconnected_brute(&in_graph);
-            let fast_mat = answer_fast(n, m, &split_components, &edges);
+            let fast_mat = answer_fast(n, m, &tricon.components, &tricon.edges);
 
             assert_eq!(brute_mat, fast_mat);
         }
@@ -728,16 +725,14 @@ mod tests {
 
             let in_graph = random_biconnected_graph(n, m, i);
 
-            dbg!(&in_graph);
-
-            let (split_components, edges, _, _) = get_triconnected_components(&in_graph);
-            verify_components(&in_graph, &split_components, &edges);
+            let tricon = get_triconnected_components(&in_graph);
+            verify_components(&in_graph, &tricon.components, &tricon.edges);
 
             let n = in_graph.node_references().count();
             let m = in_graph.edge_references().count();
 
             let brute_mat = are_triconnected_brute(&in_graph);
-            let fast_mat = answer_fast(n, m, &split_components, &edges);
+            let fast_mat = answer_fast(n, m, &tricon.components, &tricon.edges);
 
             assert_eq!(brute_mat, fast_mat);
         }

@@ -5,11 +5,11 @@ use crate::triconnected_blocks::outside_structures::{Component, ComponentType};
 /// Two components can be merged if and only if they are of the same type (excluding `R` nodes)
 /// and share a common virtual edge.
 pub(crate) fn merge_components(m: usize, split_components: &mut Vec<Component>) {
-    let mut edge_to_component = vec![None; m];
+    let mut edge_to_component = vec![0; m];
 
     for (i, component) in split_components.iter().enumerate() {
         for &eid in &component.edges {
-            edge_to_component[eid] = Some(i);
+            edge_to_component[eid] = i;
         }
     }
 
@@ -32,21 +32,25 @@ pub(crate) fn merge_components(m: usize, split_components: &mut Vec<Component>) 
         let mut j = 0;
         while j < collected_edges.len() {
             let eid = collected_edges[j];
-            if let Some(other_idx) = edge_to_component[eid] {
-                if other_idx != i
-                    && !merged_already[other_idx]
-                    && split_components[other_idx].component_type == component.component_type
-                {
-                    merged_already[other_idx] = true;
+            let other_idx = edge_to_component[eid];
 
-                    // Add all edges except the current one to avoid duplicates
-                    collected_edges.extend(
-                        split_components[other_idx]
-                            .edges
-                            .iter()
-                            .filter(|&&e| e != eid),
-                    );
-                }
+            if other_idx != i
+                && !merged_already[other_idx]
+                && split_components[other_idx].component_type == component.component_type
+            {
+                merged_already[other_idx] = true;
+
+                // Add all edges except the current one to avoid duplicates
+                collected_edges.extend(
+                    split_components[other_idx]
+                        .edges
+                        .iter()
+                        .filter(|&&e| e != eid),
+                );
+
+                // remove the current edge, since it's invalid now
+                collected_edges.swap_remove(j);
+                continue;
             }
             j += 1;
         }
