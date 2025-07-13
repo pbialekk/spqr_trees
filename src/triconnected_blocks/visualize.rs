@@ -9,6 +9,48 @@ pub fn visualize_triconnected(tricon: &TriconnectedComponents) -> String {
     writeln!(output, "  node [fontname=\"Helvetica\"];").unwrap();
     writeln!(output).unwrap();
 
+    {
+        writeln!(output, "  // The actual graph").unwrap();
+        writeln!(output, "  subgraph cluster_graph {{").unwrap();
+        writeln!(output, "    label=\"Graph\";").unwrap();
+        writeln!(output, "    style=filled; fillcolor=\"#f0f0f0\";").unwrap();
+        let mut nodes = Vec::new();
+        for (from, to) in &tricon.edges {
+            if !nodes.contains(&from) {
+                nodes.push(from);
+            }
+            if !nodes.contains(&to) {
+                nodes.push(to);
+            }
+        }
+
+        // Nodes
+        for v in nodes {
+            writeln!(
+                output,
+                "    {} [label=\"{}\", shape=circle, fillcolor=\"#ffffff\", style=filled];",
+                v, v
+            )
+            .unwrap();
+        }
+        writeln!(output).unwrap();
+
+        // Edges
+        for (eid, (from, to)) in tricon.edges.iter().enumerate() {
+            if tricon.is_real_edge[eid] {
+                writeln!(
+                    output,
+                    "    {} -- {} [label=\"{}\", color=black];",
+                    from, to, eid
+                )
+                .unwrap();
+            }
+        }
+
+        writeln!(output, "  }}").unwrap();
+        writeln!(output).unwrap();
+    }
+
     for (i, comp) in tricon.components.iter().enumerate() {
         let (prefix, label, fillcolor, nodecolor) = match comp.component_type {
             Some(ComponentType::R) => (

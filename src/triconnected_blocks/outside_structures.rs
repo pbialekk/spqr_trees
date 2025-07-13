@@ -19,6 +19,16 @@ pub enum ComponentType {
     R, // triconnected
 }
 
+impl std::fmt::Display for ComponentType {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        match self {
+            ComponentType::P => write!(f, "P"),
+            ComponentType::S => write!(f, "S"),
+            ComponentType::R => write!(f, "R"),
+        }
+    }
+}
+
 /// Represents a component in the triconnected block decomposition.
 ///
 /// Contains a list of edges that belong to the component and its type.

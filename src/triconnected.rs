@@ -13,6 +13,7 @@ use crate::{
         pathfinder::run_pathfinder,
     },
 };
+use std::collections::HashMap;
 
 fn find_components(
     root: usize,
@@ -449,11 +450,67 @@ pub fn get_triconnected_components(in_graph: &UnGraph) -> TriconnectedComponents
         }
     }
 
+    // on make_adjacency_lists_acceptable we renumbered the edges, we remap them now.
+
+    let mut pair_to_indices: HashMap<(usize, usize), Vec<usize>> = HashMap::new();
+    let mut vedges = Vec::new();
+    for (eid, (s, t)) in graph.edges.iter().enumerate() {
+        let (s, t) = if s < t { (*s, *t) } else { (*t, *s) };
+
+        if is_real_edge[eid] {
+            pair_to_indices.entry((s, t)).or_default().push(eid);
+        } else if edges_occs[eid] != 0 {
+            vedges.push(eid);
+        }
+    }
+
+    let mut new_edges = Vec::with_capacity(graph.m);
+    let mut old_eid_to_new = vec![0; graph.m];
+    for eid in in_graph.edge_references() {
+        let (mut s, mut t) = (eid.source().index(), eid.target().index());
+
+        if s > t {
+            std::mem::swap(&mut s, &mut t);
+        }
+
+        let take = pair_to_indices.get_mut(&(s, t)).unwrap().pop().unwrap();
+        old_eid_to_new[take] = eid.id().index();
+        new_edges.push((s, t));
+    }
+
+    // vedges remain
+    for &eid in &vedges {
+        let (s, t) = graph.edges[eid];
+        old_eid_to_new[eid] = new_edges.len();
+        new_edges.push((s, t));
+    }
+
+    // remap indices
+    for c in &mut split_components {
+        for i in 0..c.edges.len() {
+            c.edges[i] = old_eid_to_new[c.edges[i]];
+        }
+    }
+    let mut new_is_real_edge = vec![false; new_edges.len()];
+    for i in 0..graph.m {
+        if edges_occs[i] >= 1 {
+            // not dead
+            new_is_real_edge[old_eid_to_new[i]] = is_real_edge[i];
+        }
+    }
+    let mut new_real_to_split_component = vec![None; new_edges.len()];
+    for i in 0..graph.m {
+        if edges_occs[i] >= 1 {
+            // not dead
+            new_real_to_split_component[old_eid_to_new[i]] = real_to_split_component[i];
+        }
+    }
+
     TriconnectedComponents {
         components: split_components,
-        edges: graph.edges,
-        is_real_edge,
-        real_to_split: real_to_split_component,
+        edges: new_edges,
+        is_real_edge: new_is_real_edge,
+        real_to_split: new_real_to_split_component,
     }
 }
 
