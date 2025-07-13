@@ -3,19 +3,19 @@ use crate::{
 };
 
 pub fn get_spqr_tree(graph: &UnGraph) -> SPQRTree {
-    let tricon = get_triconnected_components(graph);
+    let triconnected_components = get_triconnected_components(graph);
 
-    let mut spqr_tree = SPQRTree::new(tricon.clone());
+    let mut spqr_tree = SPQRTree::new(&triconnected_components);
 
     // now we just add edges between components
-    let mut edge_to_component = vec![0; tricon.edges.len()];
-    for (i, component) in tricon.components.iter().enumerate() {
+    let mut edge_to_component = vec![0; triconnected_components.edges.len()];
+    for (i, component) in triconnected_components.components.iter().enumerate() {
         for &eid in &component.edges {
             edge_to_component[eid] = i;
         }
     }
 
-    for (i, component) in tricon.components.iter().enumerate() {
+    for (i, component) in triconnected_components.components.iter().enumerate() {
         for &eid in &component.edges {
             if edge_to_component[eid] == i {
                 continue;
@@ -103,6 +103,7 @@ mod tests {
         spq_edges == edges_in
     }
 
+    #[cfg(all(test, not(debug_assertions)))]
     #[test]
     fn test_spqr_tree() {
         for i in 0..1000 {

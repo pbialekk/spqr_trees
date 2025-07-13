@@ -12,7 +12,7 @@ pub enum EdgeType {
 /// - `P`: Bond (parallel edges, k >= 3)
 /// - `S`: Cycle (simple cycle)
 /// - `R`: Triconnected component (rigid)
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Clone, PartialEq, Copy)]
 pub enum ComponentType {
     P, // bond
     S, // triangle

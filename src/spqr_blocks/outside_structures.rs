@@ -7,11 +7,11 @@ pub struct SPQRTree {
 }
 
 impl SPQRTree {
-    pub fn new(triconnected_components: TriconnectedComponents) -> Self {
+    pub fn new(triconnected_components: &TriconnectedComponents) -> Self {
         let n = triconnected_components.components.len();
         let adj = vec![Vec::new(); n];
         SPQRTree {
-            triconnected_components,
+            triconnected_components: triconnected_components.clone(),
             adj,
         }
     }

@@ -46,8 +46,8 @@ pub fn visualize_spqr(spqr: &SPQRTree) -> String {
     for (u, adj_u) in spqr.adj.iter().enumerate() {
         for &v in adj_u {
             if u < v {
-                let u_type = &spqr.triconnected_components.components[u].component_type;
-                let v_type = &spqr.triconnected_components.components[v].component_type;
+                let u_type = spqr.triconnected_components.components[u].component_type;
+                let v_type = spqr.triconnected_components.components[v].component_type;
 
                 let u_prefix = u_type.clone().unwrap().to_string();
                 let v_prefix = v_type.clone().unwrap().to_string();

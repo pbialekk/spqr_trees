@@ -716,12 +716,7 @@ mod tests {
         for (eid, cnt) in edges_occs.iter().enumerate() {
             let (s, t) = edges[eid];
             if *cnt == 2 {
-                assert!(
-                    is_splitpair(in_graph, s, t),
-                    "Edge {}-{} occurs twice, but is not a split pair",
-                    s,
-                    t
-                );
+                assert!(is_splitpair(in_graph, s, t));
             } else {
                 assert!(*cnt <= 1);
             }
@@ -732,8 +727,6 @@ mod tests {
     #[test]
     fn test_triconnected_components() {
         for i in 0..1000 {
-            println!("test_triconnected_components() it: {}", i);
-
             let n = 2 + i / 10;
             let m: usize = 1 + i;
 
@@ -755,8 +748,6 @@ mod tests {
     #[test]
     fn test_triconnected_components_light() {
         for i in 0..100 {
-            println!("test_triconnected_components_light() it: {}", i);
-
             let n = 2 + i / 10;
             let m: usize = 1 + i;
 
