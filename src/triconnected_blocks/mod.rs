@@ -6,3 +6,4 @@ pub(crate) mod palm_dfs;
 pub(crate) mod pathfinder;
 
 pub mod outside_structures;
+pub mod visualize;

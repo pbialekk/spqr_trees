@@ -439,13 +439,13 @@ pub fn get_triconnected_components(in_graph: &UnGraph) -> TriconnectedComponents
     for (i, c) in split_components.iter().enumerate() {
         for &eid in &c.edges {
             edges_occs[eid] += 1;
+            is_real_edge[eid] = true;
+            real_to_split_component[eid] = Some(i);
 
             if edges_occs[eid] > 1 {
                 is_real_edge[eid] = false; // this is a virtual edge
                 real_to_split_component[eid] = None;
             }
-            is_real_edge[eid] = true;
-            real_to_split_component[eid] = Some(i);
         }
     }
 
