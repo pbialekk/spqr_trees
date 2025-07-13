@@ -98,7 +98,7 @@ impl GraphInternal {
         self.edge_type[eid] = Some(EdgeType::Back);
         let (s, t) = self.edges[eid];
 
-        if self.get_high(s) < self.num[s] {
+        if self.get_high(t) < self.num[s] {
             self.high[t].push(eid);
         }
     }

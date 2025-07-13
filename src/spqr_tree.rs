@@ -32,9 +32,14 @@ pub fn get_spqr_tree(graph: &UnGraph) -> SPQRTree {
 mod tests {
     use std::mem;
 
-    use petgraph::visit::{EdgeRef, IntoNodeReferences, NodeIndexable};
+    use petgraph::visit::{EdgeRef, IntoNodeReferences};
 
-    use crate::{EdgeLabel, block_cut::get_block_cut_tree};
+    use crate::{
+        block_cut::get_block_cut_tree,
+        testing::{
+            graph_enumerator::GraphEnumeratorState, random_graphs::random_biconnected_graph,
+        },
+    };
 
     use super::*;
 
@@ -98,33 +103,6 @@ mod tests {
         spq_edges == edges_in
     }
 
-    fn random_biconnected_graph(n: usize, m: usize, seed: usize) -> UnGraph {
-        use rand::Rng;
-        use rand::SeedableRng;
-        use rand::rngs::StdRng;
-
-        let mut rng = StdRng::seed_from_u64(seed as u64);
-        let mut graph = UnGraph::new_undirected();
-
-        for i in 0..n {
-            graph.add_node(i.try_into().unwrap());
-            if i > 0 {
-                let j = rng.random_range(0..i);
-                graph.add_edge(graph.from_index(i), graph.from_index(j), EdgeLabel::Real);
-            }
-        }
-
-        for _ in n - 1..m {
-            let s = rng.random_range(0..n);
-            let t = rng.random_range(0..n);
-            graph.add_edge(graph.from_index(s), graph.from_index(t), EdgeLabel::Real);
-        }
-
-        let bct = get_block_cut_tree(&graph);
-
-        bct.blocks[0].clone()
-    }
-
     #[test]
     fn test_spqr_tree() {
         for i in 0..1000 {
@@ -150,6 +128,30 @@ mod tests {
             let in_graph = random_biconnected_graph(n, m, i);
             let spqr_tree = get_spqr_tree(&in_graph);
             assert!(same_graphs(&in_graph, &spqr_tree));
+        }
+    }
+
+    #[cfg(all(test, not(debug_assertions)))]
+    #[test]
+    fn test_spqr_tree_exhaustive() {
+        for n in 2..=7 {
+            let mut enumerator = GraphEnumeratorState {
+                n,
+                mask: 0,
+                last_mask: (1 << (n * (n - 1) / 2)),
+            };
+
+            while let Some(in_graph) = enumerator.next() {
+                let bct = get_block_cut_tree(&in_graph);
+                if bct.cut_count > 0 || bct.block_count == 0 {
+                    continue; // not biconnected
+                }
+
+                let in_graph = bct.blocks[0].clone();
+
+                let spqr_tree = get_spqr_tree(&in_graph);
+                assert!(same_graphs(&in_graph, &spqr_tree));
+            }
         }
     }
 }

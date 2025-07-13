@@ -518,7 +518,8 @@ pub fn get_triconnected_components(in_graph: &UnGraph) -> TriconnectedComponents
 mod tests {
     use petgraph::visit::{IntoNodeReferences, NodeIndexable};
 
-    use crate::{EdgeLabel, block_cut::get_block_cut_tree};
+    use crate::testing::graph_enumerator::GraphEnumeratorState;
+    use crate::testing::random_graphs::random_biconnected_graph;
 
     use super::*;
 
@@ -576,32 +577,6 @@ mod tests {
         }
 
         res
-    }
-    fn random_biconnected_graph(n: usize, m: usize, seed: usize) -> UnGraph {
-        use rand::Rng;
-        use rand::SeedableRng;
-        use rand::rngs::StdRng;
-
-        let mut rng = StdRng::seed_from_u64(seed as u64);
-        let mut graph = UnGraph::new_undirected();
-
-        for i in 0..n {
-            graph.add_node(i.try_into().unwrap());
-            if i > 0 {
-                let j = rng.random_range(0..i);
-                graph.add_edge(graph.from_index(i), graph.from_index(j), EdgeLabel::Real);
-            }
-        }
-
-        for _ in n - 1..m {
-            let s = rng.random_range(0..n);
-            let t = rng.random_range(0..n);
-            graph.add_edge(graph.from_index(s), graph.from_index(t), EdgeLabel::Real);
-        }
-
-        let bct = get_block_cut_tree(&graph);
-
-        bct.blocks[0].clone()
     }
 
     fn answer_fast(
@@ -741,7 +716,12 @@ mod tests {
         for (eid, cnt) in edges_occs.iter().enumerate() {
             let (s, t) = edges[eid];
             if *cnt == 2 {
-                assert!(is_splitpair(in_graph, s, t));
+                assert!(
+                    is_splitpair(in_graph, s, t),
+                    "Edge {}-{} occurs twice, but is not a split pair",
+                    s,
+                    t
+                );
             } else {
                 assert!(*cnt <= 1);
             }
@@ -792,6 +772,39 @@ mod tests {
             let fast_mat = answer_fast(n, m, &tricon.components, &tricon.edges);
 
             assert_eq!(brute_mat, fast_mat);
+        }
+    }
+
+    #[cfg(all(test, not(debug_assertions)))]
+    #[test]
+    fn test_triconnected_exhaustive() {
+        // tests all biconnected simple graphs with n <= 7
+        for n in 2..=7 {
+            let mut enumerator = GraphEnumeratorState {
+                n,
+                mask: 0,
+                last_mask: (1 << (n * (n - 1) / 2)),
+            };
+
+            while let Some(in_graph) = enumerator.next() {
+                let bct = get_block_cut_tree(&in_graph);
+                if bct.cut_count > 0 || bct.block_count == 0 {
+                    continue; // not biconnected
+                }
+
+                let in_graph = bct.blocks[0].clone();
+
+                let tricon = get_triconnected_components(&in_graph);
+                verify_components(&in_graph, &tricon.components, &tricon.edges);
+
+                let n = in_graph.node_references().count();
+                let m = in_graph.edge_references().count();
+
+                let brute_mat = are_triconnected_brute(&in_graph);
+                let fast_mat = answer_fast(n, m, &tricon.components, &tricon.edges);
+
+                assert_eq!(brute_mat, fast_mat);
+            }
         }
     }
 }
