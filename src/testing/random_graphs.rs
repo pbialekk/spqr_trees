@@ -6,7 +6,10 @@ use rand::Rng;
 use rand::SeedableRng;
 use rand::rngs::StdRng;
 
-pub(crate) fn random_graph(n: usize, m: usize, seed: usize) -> UnGraph {
+/// This function generates a random undirected connected graph.
+/// It allows multiple edges and self-loops.
+/// Based on spanning tree.
+pub(crate) fn random_connected_graph(n: usize, m: usize, seed: usize) -> UnGraph {
     let mut rng = StdRng::seed_from_u64(seed as u64);
     let mut graph = UnGraph::new_undirected();
 
@@ -27,8 +30,10 @@ pub(crate) fn random_graph(n: usize, m: usize, seed: usize) -> UnGraph {
     graph
 }
 
+/// Generates a random biconnected graph.
+/// Takes first biconnected component of BC Tree of a random graph.
 pub(crate) fn random_biconnected_graph(n: usize, m: usize, seed: usize) -> UnGraph {
-    let graph = random_graph(n, m, seed);
+    let graph = random_connected_graph(n, m, seed);
 
     let bct = get_block_cut_tree(&graph);
 
