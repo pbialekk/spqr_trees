@@ -1,3 +1,4 @@
+use embed_doc_image::embed_doc_image;
 use crate::{DFSEdgeLabel, EdgeLabel, UnGraph};
 use petgraph::graph::{EdgeIndex, NodeIndex};
 use petgraph::visit::{EdgeRef, NodeIndexable};
@@ -42,7 +43,7 @@ impl BlockCutTree {}
 /// - Graph must be connected, otherwise you will get only first BC tree not the forest.
 ///
 /// </div>
-fn dfs( // TODO: refactor this to take mut struct with parameters, more readable
+fn dfs(
     graph: &UnGraph,
     // NodeIndex not label!!!
     u: usize,
@@ -120,7 +121,7 @@ fn dfs( // TODO: refactor this to take mut struct with parameters, more readable
 ///
 /// - We consider graph with one vertex and no edges as 1 biconnected component.
 /// - Graph must be connected, otherwise you will get  only first BC tree not the forest.
-/// - We are assuming that graph is simple. See `mod parallel_edges`.
+/// - We are assuming that graph is simple.
 ///
 /// </div>
 ///
@@ -140,7 +141,33 @@ fn dfs( // TODO: refactor this to take mut struct with parameters, more readable
 /// </div>
 ///
 /// # Example
-/// TODO: read graph, draw it dfs, and block cut tree, assert something
+/// ```rust
+/// use spqr_trees::input::from_file;
+/// use spqr_trees::block_cut::{get_block_cut_tree, draw_full_block_cut_tree};
+///
+/// let graph = from_file("assets/bc.in");
+/// let bc_tree = get_block_cut_tree(&graph);
+///
+/// assert_eq!(bc_tree.block_count, 7);
+/// assert_eq!(bc_tree.cut_count, 4);
+/// ```
+///
+/// # Walkthrough
+/// Given graph looks like this:
+///
+/// ![BC_Graph][bc]
+///
+/// Then DFS will find articulation points (cut vertices):
+///
+/// ![BC_DFS][bc_dfs]
+///
+/// And finally we will get the block-cut tree:
+///
+/// ![BC_Full][bc_full]
+#[embed_doc_image("bc", "assets/bc.svg")]
+#[embed_doc_image("bc_dfs", "assets/bc_dfs.svg")]
+#[embed_doc_image("bc_full", "assets/bc_full.svg")]
+
 pub fn get_block_cut_tree(graph: &UnGraph) -> BlockCutTree {
     let graph_size = graph.node_count();
     let mut time = 0;
@@ -594,7 +621,6 @@ mod bc_tests {
     use petgraph::graph::{DiGraph};
     use petgraph::algo::{ford_fulkerson};
     use petgraph::visit::{Dfs};
-    use hashbrown::{HashMap};
 
     use crate::testing::graph_enumerator::GraphEnumeratorState;
     use crate::testing::random_graphs::{random_connected_graph};
@@ -684,6 +710,21 @@ mod bc_tests {
         visited == graph.node_count()
     }
 
+    fn glue_bc_tree_back(
+        bct: &BlockCutTree,
+    ) -> Vec<(usize, usize)> {
+        let mut edges = vec![];
+
+        for block in bct.blocks.iter() {
+            for edge in block.edge_references() {
+                let (u, v) = (edge.source(), edge.target());
+                edges.push((*block.node_weight(u).unwrap() as usize, *block.node_weight(v).unwrap() as usize));
+            }
+        }
+
+        edges
+    }
+
     #[test]
     fn test_bc_tree_components_are_biconnected_light() {
         for i in 0..100 {
@@ -771,6 +812,63 @@ mod bc_tests {
 
                 assert_eq!(bct.cut_count, is_cut.iter().filter(|&&x| x).count());
                 assert_eq!(get_cut_vertices_from_bct(&bct), is_cut);
+            }
+        }
+    }
+
+    #[test]
+    fn test_bc_tree_glue_back() {
+        for i in 0..100 {
+            let n = 2 + i / 10;
+            let m: usize = 1 + i;
+
+            let in_graph = random_connected_graph(n, m, i);
+
+            let bct = get_block_cut_tree(&in_graph);
+            let mut glued_edges = glue_bc_tree_back(&bct);
+
+            let mut original_edges = in_graph
+                .edge_references()
+                .map(|e| (e.source().index(), e.target().index()))
+                .collect::<Vec<_>>();
+
+            glued_edges.sort();
+            original_edges.sort();
+
+            assert_eq!(glued_edges, original_edges);
+
+        }
+    }
+
+    #[cfg(all(test, not(debug_assertions)))]
+    #[test]
+    fn test_bc_tree_glue_back_exhaustive() {
+        // tests all connected simple graphs with n <= 7
+        for n in 2..=7 {
+            let mut enumerator = GraphEnumeratorState {
+                n,
+                mask: 0,
+                last_mask: (1 << (n * (n - 1) / 2)),
+            };
+
+            while let Some(in_graph) = enumerator.next() {
+                if !is_connected(&in_graph) {
+                    continue; // not connected
+                }
+
+                let bct = get_block_cut_tree(&in_graph);
+                let mut glued_edges = glue_bc_tree_back(&bct);
+
+                let mut original_edges = in_graph
+                    .edge_references()
+                    .map(|e| (e.source().index(), e.target().index()))
+                    .collect::<Vec<_>>();
+
+                glued_edges.sort();
+                original_edges.sort();
+
+                assert_eq!(glued_edges, original_edges);
+
             }
         }
     }

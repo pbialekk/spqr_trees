@@ -21,10 +21,16 @@ pub(crate) fn random_connected_graph(n: usize, m: usize, seed: usize) -> UnGraph
         }
     }
 
-    for _ in n - 1..m {
+    let mut num_edges = n - 1;
+
+    while num_edges < m {
         let s = rng.random_range(0..n);
         let t = rng.random_range(0..n);
+        if s == t  {
+            continue; // skip self-loops
+        }
         graph.add_edge(graph.from_index(s), graph.from_index(t), EdgeLabel::Real);
+        num_edges += 1;
     }
 
     graph
