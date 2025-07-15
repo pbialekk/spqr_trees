@@ -1,7 +1,17 @@
+use embed_doc_image::embed_doc_image;
+
 use crate::{
     UnGraph, spqr_blocks::outside_structures::SPQRTree, triconnected::get_triconnected_components,
 };
 
+/// ## Overwiew
+/// Given a biconnected graph `G`, this function returns its SPQR tree which is computed in linear time.
+///
+/// For more information, refer to the triconnected.rs module documentation.
+///
+/// ## Example (visualized using visualize.rs from spqr_block)
+/// ![SPQR_Full][spqr_full]
+#[embed_doc_image("spqr_full", "assets/spqr_tree.svg")]
 pub fn get_spqr_tree(graph: &UnGraph) -> SPQRTree {
     let triconnected_components = get_triconnected_components(graph);
 

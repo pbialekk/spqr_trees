@@ -5,7 +5,7 @@ pub fn visualize_triconnected(tricon: &TriconnectedComponents) -> String {
     let mut output = String::new();
 
     writeln!(output, "graph components {{").unwrap();
-    writeln!(output, "  graph [splines=true, rankdir=LR];").unwrap();
+    writeln!(output, "  graph [splines=true, rankdir=LR, compound=true];").unwrap();
     writeln!(output, "  node [fontname=\"Helvetica\"];").unwrap();
     writeln!(output).unwrap();
 

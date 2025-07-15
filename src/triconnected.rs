@@ -1,3 +1,4 @@
+use embed_doc_image::embed_doc_image;
 use petgraph::visit::EdgeRef;
 
 use crate::{
@@ -357,12 +358,14 @@ fn find_components(
 ///
 /// After merging all P nodes with P nodes and S nodes with S nodes, the final set of triconnected components is obtained.
 ///
-/// ## Output
-/// Returns a tuple struct `TriconnectedComponents`
+/// ## Example (visualized using visualize.rs from triconnected_blocks)
+///
+/// ![TRICON_Full][tricon_full]
 ///
 /// ## Reference
 /// - [Hopcroft, J., & Tarjan, R. (1973). Dividing a Graph into Triconnected Components. SIAM Journal on Computing, 2(3), 135–158.](https://epubs.siam.org/doi/10.1137/0202012)
 /// - Explaining Hopcroft, Tarjan, Gutwenger, and Mutzel’s SPQR Decomposition Algorithm (https://shoyamanishi.github.io/wailea/docs/spqr_explained/HTGMExplained.pdf)
+#[embed_doc_image("tricon_full", "assets/split_components.svg")]
 pub fn get_triconnected_components(in_graph: &UnGraph) -> TriconnectedComponents {
     let n = in_graph.node_count();
     let m = in_graph.edge_count();
