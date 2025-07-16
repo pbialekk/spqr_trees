@@ -80,7 +80,7 @@ impl Component {
 /// - `components`: List of components in the triconnected decomposition.
 /// - `edges`: List of edges in the original graph.
 /// - `is_real_edge`: Indicates if an edge is a real edge in the original graph.
-/// - `real_to_split`: Maps real edges to their corresponding split components, if any.
+/// - `real_to_split`: Maps edges to their corresponding split components. Virtual edges are mapped to `None`.
 #[derive(Debug, Clone)]
 pub struct TriconnectedComponents {
     pub components: Vec<Component>,

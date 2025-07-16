@@ -11,7 +11,9 @@ use crate::{
 /// Using the SPQR-tree structure, this algorithm after a linear preprocessing answers queries in form `Are vertices a and b in the same triconnected component?` in constant time.
 ///
 /// Prerequisite: input graph is biconnected
-/// Reference: (https://link.springer.com/article/10.1007/BF01961541)
+///
+/// ## Reference:
+/// - [On-line maintenance of triconnected components with SPQR-trees](https://link.springer.com/article/10.1007/BF01961541)
 pub struct StaticTriconnectivity {
     tree: SPQRTree,
 

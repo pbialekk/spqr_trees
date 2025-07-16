@@ -9,7 +9,7 @@ use crate::{
 ///
 /// For more information, refer to the triconnected.rs module documentation.
 ///
-/// ## Example (visualized using visualize.rs from spqr_block)
+/// ## Example (visualized using .dot file generated with visualize.rs from spqr_blocks)
 /// ![SPQR_Full][spqr_full]
 #[embed_doc_image("spqr_full", "assets/spqr_tree.svg")]
 pub fn get_spqr_tree(graph: &UnGraph) -> SPQRTree {

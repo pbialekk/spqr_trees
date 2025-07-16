@@ -358,13 +358,13 @@ fn find_components(
 ///
 /// After merging all P nodes with P nodes and S nodes with S nodes, the final set of triconnected components is obtained.
 ///
-/// ## Example (visualized using visualize.rs from triconnected_blocks)
+/// ## Example (visualized using .dot file generated with visualize.rs from triconnected_blocks)
 ///
 /// ![TRICON_Full][tricon_full]
 ///
 /// ## Reference
 /// - [Hopcroft, J., & Tarjan, R. (1973). Dividing a Graph into Triconnected Components. SIAM Journal on Computing, 2(3), 135–158.](https://epubs.siam.org/doi/10.1137/0202012)
-/// - Explaining Hopcroft, Tarjan, Gutwenger, and Mutzel’s SPQR Decomposition Algorithm (https://shoyamanishi.github.io/wailea/docs/spqr_explained/HTGMExplained.pdf)
+/// - [Explaining Hopcroft, Tarjan, Gutwenger, and Mutzel’s SPQR Decomposition Algorithm] (https://shoyamanishi.github.io/wailea/docs/spqr_explained/HTGMExplained.pdf)
 #[embed_doc_image("tricon_full", "assets/split_components.svg")]
 pub fn get_triconnected_components(in_graph: &UnGraph) -> TriconnectedComponents {
     let n = in_graph.node_count();
@@ -495,16 +495,15 @@ pub fn get_triconnected_components(in_graph: &UnGraph) -> TriconnectedComponents
         }
     }
     let mut new_is_real_edge = vec![false; new_edges.len()];
-    for i in 0..graph.m {
-        if edges_occs[i] >= 1 {
-            // not dead
+    for i in 0..new_edges.len() {
+        if edges_occs[i] == 1 {
+            // a real edge
             new_is_real_edge[old_eid_to_new[i]] = is_real_edge[i];
         }
     }
     let mut new_real_to_split_component = vec![None; new_edges.len()];
-    for i in 0..graph.m {
-        if edges_occs[i] >= 1 {
-            // not dead
+    for i in 0..new_edges.len() {
+        if edges_occs[i] == 1 {
             new_real_to_split_component[old_eid_to_new[i]] = real_to_split_component[i];
         }
     }
