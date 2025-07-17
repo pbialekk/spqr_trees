@@ -1,10 +1,7 @@
 use hashbrown::HashMap;
-use petgraph::visit::IntoNodeReferences;
 
 use crate::{
-    UnGraph,
-    spqr_blocks::outside_structures::{RootedSPQRTree, SPQRTree},
-    spqr_tree::{get_rooted_spqr_tree, get_spqr_tree},
+    UnGraph, spqr_blocks::outside_structures::RootedSPQRTree, spqr_tree::get_rooted_spqr_tree,
     triconnected_blocks::outside_structures::ComponentType,
 };
 
@@ -130,14 +127,9 @@ impl StaticTriconnectivity {
 
 #[cfg(test)]
 mod tests {
-    use petgraph::visit::EdgeRef;
+    use petgraph::visit::{EdgeRef, IntoNodeReferences};
 
-    use crate::{
-        block_cut::get_block_cut_tree,
-        testing::{
-            graph_enumerator::GraphEnumeratorState, random_graphs::random_biconnected_graph,
-        },
-    };
+    use crate::testing::random_graphs::random_biconnected_graph;
 
     use super::*;
 
@@ -220,6 +212,10 @@ mod tests {
     #[cfg(all(test, not(debug_assertions)))]
     #[test]
     fn test_triconnectivity_exhaustive() {
+        use crate::{
+            block_cut::get_block_cut_tree, testing::graph_enumerator::GraphEnumeratorState,
+        };
+
         for n in 2..=7 {
             let mut enumerator = GraphEnumeratorState {
                 n,

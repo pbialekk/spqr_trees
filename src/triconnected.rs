@@ -520,7 +520,6 @@ pub fn get_triconnected_components(in_graph: &UnGraph) -> TriconnectedComponents
 mod tests {
     use petgraph::visit::{IntoNodeReferences, NodeIndexable};
 
-    use crate::testing::graph_enumerator::GraphEnumeratorState;
     use crate::testing::random_graphs::random_biconnected_graph;
 
     use super::*;
@@ -771,6 +770,8 @@ mod tests {
     #[cfg(all(test, not(debug_assertions)))]
     #[test]
     fn test_triconnected_exhaustive() {
+        use crate::testing::graph_enumerator::GraphEnumeratorState;
+
         // tests all biconnected simple graphs with n <= 7
         for n in 2..=7 {
             let mut enumerator = GraphEnumeratorState {

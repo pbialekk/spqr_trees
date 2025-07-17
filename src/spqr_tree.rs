@@ -92,12 +92,7 @@ mod tests {
 
     use petgraph::visit::{EdgeRef, IntoNodeReferences};
 
-    use crate::{
-        block_cut::get_block_cut_tree,
-        testing::{
-            graph_enumerator::GraphEnumeratorState, random_graphs::random_biconnected_graph,
-        },
-    };
+    use crate::testing::random_graphs::random_biconnected_graph;
 
     use super::*;
 
@@ -193,6 +188,10 @@ mod tests {
     #[cfg(all(test, not(debug_assertions)))]
     #[test]
     fn test_spqr_tree_exhaustive() {
+        use crate::{
+            block_cut::get_block_cut_tree, testing::graph_enumerator::GraphEnumeratorState,
+        };
+
         for n in 2..=7 {
             let mut enumerator = GraphEnumeratorState {
                 n,
