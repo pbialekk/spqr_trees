@@ -1,6 +1,8 @@
 use crate::triconnected_blocks::outside_structures::{ComponentType, TriconnectedComponents};
 use std::fmt::Write;
 
+/// Given a `TriconnectedComponents` structure, this function generates a
+/// Graphviz DOT representation of the triconnected components of a graph.
 pub fn visualize_triconnected(tricon: &TriconnectedComponents) -> String {
     let mut output = String::new();
 

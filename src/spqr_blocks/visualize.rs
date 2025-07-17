@@ -3,6 +3,8 @@ use crate::{
     triconnected_blocks::visualize::visualize_triconnected,
 };
 
+/// Given a `SPQRTree` structure, this function generates a
+/// Graphviz DOT representation of the SPQR tree.
 pub fn visualize_spqr(spqr: &SPQRTree) -> String {
     let mut output = visualize_triconnected(&spqr.triconnected_components);
 

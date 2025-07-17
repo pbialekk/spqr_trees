@@ -1,5 +1,9 @@
 use crate::triconnected_blocks::outside_structures::TriconnectedComponents;
 
+/// Represents the SPQR tree structure built from triconnected components.
+///
+/// - Vertices are numbered from `0` to `k-1`, where `k` is the number of triconnected components.
+/// - `adj[u]` contains the indices of components adjacent to component `u` in the SPQR tree.
 #[derive(Debug, Clone)]
 pub struct SPQRTree {
     pub triconnected_components: TriconnectedComponents,
