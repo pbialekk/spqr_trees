@@ -43,7 +43,7 @@ pub fn get_spqr_tree(graph: &UnGraph) -> SPQRTree {
 /// ## Overwiew
 /// Given a biconnected graph `G`, this function returns its rooted SPQR tree at the first component.
 ///
-/// After rooting the tree, adj[u] doesn't contain the parent component of `u` in the SPQR tree.
+/// After rooting the tree, `adj[u]` doesn't contain the parent component of `u` in the SPQR tree.
 pub fn get_rooted_spqr_tree(graph: &UnGraph) -> RootedSPQRTree {
     let unrooted_spqr = get_spqr_tree(graph);
     let mut rooted_spqr = RootedSPQRTree::new(&unrooted_spqr);

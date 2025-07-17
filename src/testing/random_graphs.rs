@@ -6,6 +6,7 @@ use rand::Rng;
 use rand::SeedableRng;
 use rand::rngs::StdRng;
 
+#[allow(dead_code)]
 pub(crate) fn random_graph(n: usize, m: usize, seed: usize) -> UnGraph {
     let mut rng = StdRng::seed_from_u64(seed as u64);
     let mut graph = UnGraph::new_undirected();
@@ -27,7 +28,8 @@ pub(crate) fn random_graph(n: usize, m: usize, seed: usize) -> UnGraph {
     graph
 }
 
-pub fn random_biconnected_graph(n: usize, m: usize, seed: usize) -> UnGraph {
+#[allow(dead_code)]
+pub(crate) fn random_biconnected_graph(n: usize, m: usize, seed: usize) -> UnGraph {
     let graph = random_graph(n, m, seed);
 
     let bct = get_block_cut_tree(&graph);

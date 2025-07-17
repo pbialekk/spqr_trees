@@ -348,7 +348,7 @@ fn find_components(
 ///
 /// When a split-pair `(s, t)` is found, the graph is split into components by removing `s` and `t`.
 /// For each resulting component, a new *virtual* edge `(s, t)` is added to maintain biconnectivity.
-/// This allows the components to be merged later by "gluing" them together via the virtual edge.
+/// This allows the components to be merged later by "gluing" them together via the virtual edge (dotted one in the visualization).
 ///
 /// ## Component Types
 /// After recursively splitting on all split-pairs, the resulting components are of three types:

@@ -82,7 +82,7 @@ impl Component {
 /// Contains a list of components, edges, and additional metadata about the edges.
 ///
 /// - `components`: List of components in the triconnected decomposition.
-/// - `edges`: List of edges in the original graph.
+/// - `edges`: List of edges in the graph. Also contains the virtual edges created during the splitting process.
 /// - `is_real_edge`: Indicates if an edge is a real edge in the original graph.
 /// - `real_to_split`: Maps edges to their corresponding split components. Virtual edges are mapped to `None`.
 #[derive(Debug, Clone)]
