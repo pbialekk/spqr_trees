@@ -1,7 +1,7 @@
 use crate::triconnected_blocks::graph_internal::GraphInternal;
 
 #[derive(Debug, Clone, PartialEq)]
-pub enum EdgeType {
+pub(crate) enum EdgeType {
     Tree,
     Back,
     Killed,
