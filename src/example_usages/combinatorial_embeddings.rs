@@ -20,9 +20,9 @@ pub fn count_combinatorial_embeddings(graph: &UnGraph) -> usize {
 /// Combinatorial embedding is defined by clockwise (or anticlockwise) order of edges around each vertex.
 ///
 /// The idea is simple, we loop over all components of SPQR tree of given graph:
-/// - **S node (cycle)** - contributes 1 embedding
+/// - **S node (cycle)** - has only 1 embedding
 /// - **P node (bond)** - (k-1)! embeddings, where k is the number of edges in the bond (NOTE: not k!)
-/// - **R node (triconnected component)** - contributes 2 embeddings (we count also mirror reflection)
+/// - **R node (triconnected component)** - has 2 embeddings (we count also mirror reflection)
 ///
 /// You can try it yourself on the envelope on 8 vertices.
 ///
@@ -41,7 +41,8 @@ pub fn count_combinatorial_embeddings_biconnected(
         match component.component_type {
             Some(ComponentType::P) => {
                 let k = component.edges.len();
-                p_nodes += (1..k).product::<usize>(); // summing, because P nodes are independent
+                // summing, because each P node contains others P nodes in some virt edge
+                p_nodes += (1..k).product::<usize>();
             }
             Some(ComponentType::R) => {
                 embeddings *= 2;
