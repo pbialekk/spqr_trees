@@ -118,7 +118,7 @@ fn find_components(
             if cond_2 {
                 to = graph.first_alive(root, to).unwrap();
 
-                let mut component = Component::new(Some(ComponentType::S));
+                let mut component = Component::new(ComponentType::S);
 
                 for _ in 0..2 {
                     let eid = estack.pop().unwrap();
@@ -140,7 +140,7 @@ fn find_components(
                 to = graph.numrev[b];
 
                 tstack.pop();
-                let mut component = Component::new(None);
+                let mut component = Component::new(ComponentType::UNSURE);
                 loop {
                     if let Some(&eid) = estack.last() {
                         let (x, y) = graph.edges[eid];
@@ -169,7 +169,7 @@ fn find_components(
             }
 
             if let Some(eab) = eab {
-                let mut component = Component::new(Some(ComponentType::P));
+                let mut component = Component::new(ComponentType::P);
                 component.push_edge(eab, graph, false);
 
                 component.push_edge(evirt, graph, false); // is an old vedge
@@ -198,7 +198,7 @@ fn find_components(
             && graph.low1[to] < graph.num[u]
             && (Some(root) != graph.par[u] || t_edges_left != 0)
         {
-            let mut component = Component::new(None);
+            let mut component = Component::new(ComponentType::UNSURE);
             while let Some(&eid) = estack.last() {
                 let (x, y) = graph.edges[eid];
                 let x_in_subtree =
@@ -227,7 +227,7 @@ fn find_components(
                     || (y == u && x == graph.numrev[graph.low1[to]])
                 {
                     estack.pop();
-                    let mut component = Component::new(Some(ComponentType::P));
+                    let mut component = Component::new(ComponentType::P);
 
                     component.push_edge(eid, graph, false);
 
@@ -247,7 +247,7 @@ fn find_components(
             } else {
                 let parent_edge = graph.par_edge[u].unwrap();
 
-                let mut component = Component::new(Some(ComponentType::P));
+                let mut component = Component::new(ComponentType::P);
 
                 component.push_edge(parent_edge, graph, false);
 
@@ -377,7 +377,7 @@ pub fn get_triconnected_components(in_graph: &UnGraph) -> TriconnectedComponents
     assert!(n >= 2);
 
     if n == 2 {
-        let mut c = Component::new(Some(ComponentType::P));
+        let mut c = Component::new(ComponentType::P);
         let mut edges = Vec::new();
         for i in in_graph.edge_references() {
             let (s, t) = (i.source().index(), i.target().index());
@@ -428,7 +428,7 @@ pub fn get_triconnected_components(in_graph: &UnGraph) -> TriconnectedComponents
         &mut split_components,
     );
 
-    let mut component = Component::new(None);
+    let mut component = Component::new(ComponentType::UNSURE);
     while let Some(eid) = estack.pop() {
         component.push_edge(eid, &mut graph, false);
     }
@@ -593,7 +593,7 @@ mod tests {
         let mut res = vec![vec![false; n]; n];
 
         for c in split_components {
-            if c.component_type == Some(ComponentType::S) {
+            if c.component_type == ComponentType::S {
                 // not triconnected
                 continue;
             }
@@ -664,7 +664,7 @@ mod tests {
                 edges_occs[eid] += 1;
             }
 
-            if c.component_type == Some(ComponentType::P) {
+            if c.component_type == ComponentType::P {
                 let mut nodes = vec![];
                 for &eid in &c.edges {
                     let (s, t) = edges[eid];
@@ -675,7 +675,7 @@ mod tests {
                 nodes.dedup();
 
                 assert!(nodes.len() == 2);
-            } else if c.component_type == Some(ComponentType::S) {
+            } else if c.component_type == ComponentType::S {
                 let mut nodes = vec![];
                 for &eid in &c.edges {
                     let (s, t) = edges[eid];
@@ -696,7 +696,7 @@ mod tests {
                 }
 
                 assert!(deg.iter().all(|&d| d == 0 || d == 2));
-            } else if c.component_type == Some(ComponentType::R) {
+            } else if c.component_type == ComponentType::R {
                 let mut nodes = vec![];
                 for &eid in &c.edges {
                     let (s, t) = edges[eid];

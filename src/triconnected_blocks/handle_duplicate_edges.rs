@@ -57,7 +57,7 @@ pub(crate) fn handle_duplicate_edges(
         }
 
         if i + 1 < len && graph.edges[i] == graph.edges[i + 1] {
-            let mut component = Component::new(Some(ComponentType::P));
+            let mut component = Component::new(ComponentType::P);
 
             let (s, t) = graph.edges[i];
             let evirt = graph.new_edge(s, t, None);

@@ -27,7 +27,7 @@ pub(crate) fn random_graph(n: usize, m: usize, seed: usize) -> UnGraph {
     graph
 }
 
-pub(crate) fn random_biconnected_graph(n: usize, m: usize, seed: usize) -> UnGraph {
+pub fn random_biconnected_graph(n: usize, m: usize, seed: usize) -> UnGraph {
     let graph = random_graph(n, m, seed);
 
     let bct = get_block_cut_tree(&graph);

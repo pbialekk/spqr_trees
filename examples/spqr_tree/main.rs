@@ -3,11 +3,15 @@
 use spqr_trees::input::from_file;
 use spqr_trees::spqr_blocks::visualize::visualize_spqr;
 use spqr_trees::spqr_tree::get_spqr_tree;
+use spqr_trees::testing::random_graphs::random_biconnected_graph;
 
 fn main() {
-    let graph = from_file("assets/tricon.in");
+    let n = 10000;
+    let m: usize = 10 * n;
 
-    let split_components = get_spqr_tree(&graph);
+    let in_graph = random_biconnected_graph(n, m, 12345);
+
+    let split_components = get_spqr_tree(&in_graph);
 
     print!("{}", visualize_spqr(&split_components));
 }

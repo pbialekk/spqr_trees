@@ -54,8 +54,7 @@ impl StaticTriconnectivity {
                         allocation_node[turn] = Some(u);
                     }
 
-                    if tree.triconnected_components.components[u].component_type
-                        == Some(ComponentType::S)
+                    if tree.triconnected_components.components[u].component_type == ComponentType::S
                         && !mark[eid]
                         && !tree.triconnected_components.is_real_edge[eid]
                     {
@@ -142,11 +141,11 @@ impl StaticTriconnectivity {
         let proper_a_type = self.tree.triconnected_components.components[proper_a].component_type;
 
         if proper_a == proper_b
-            && (proper_a_type == Some(ComponentType::R) || proper_a_type == Some(ComponentType::P))
+            && (proper_a_type == ComponentType::R || proper_a_type == ComponentType::P)
         {
             return true;
         }
-        if proper_a_type == Some(ComponentType::R) {
+        if proper_a_type == ComponentType::R {
             let ref_edge = self.reference_edge[proper_a];
             if let Some(ref_edge) = ref_edge {
                 let (s, t) = self.tree.triconnected_components.edges[ref_edge];
@@ -155,7 +154,7 @@ impl StaticTriconnectivity {
                 }
             }
         }
-        if proper_a_type == Some(ComponentType::S) {
+        if proper_a_type == ComponentType::S {
             if let Some(&(link_1, link_2)) = self.s_links[proper_a].get(&a) {
                 if self.are_poles(a, b, link_1) || self.are_poles(a, b, link_2) {
                     return true;

@@ -53,19 +53,19 @@ pub fn visualize_triconnected(tricon: &TriconnectedComponents) -> String {
 
     for (i, comp) in tricon.components.iter().enumerate() {
         let (prefix, label, fillcolor, nodecolor) = match comp.component_type {
-            Some(ComponentType::R) => (
+            ComponentType::R => (
                 "R",
                 format!("R-component ({})", i + 1),
                 "#e6e6ff",
                 "#ccccff",
             ),
-            Some(ComponentType::P) => (
+            ComponentType::P => (
                 "P",
                 format!("P-component ({})", i + 1),
                 "#e6ffe6",
                 "#ccffcc",
             ),
-            Some(ComponentType::S) => (
+            ComponentType::S => (
                 "S",
                 format!("S-component ({})", i + 1),
                 "#ffe6e6",
