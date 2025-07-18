@@ -1,120 +1,94 @@
 use hashbrown::HashMap;
+use petgraph::visit::{IntoNodeReferences, NodeIndexable};
 
 use crate::{
-    UnGraph, spqr_blocks::outside_structures::RootedSPQRTree, spqr_tree::get_rooted_spqr_tree,
-    triconnected_blocks::outside_structures::ComponentType,
+    UnGraph,
+    block_cut::{BlockCutTree, get_block_cut_tree},
+    example_usages::static_triconnectivity_bicon::StaticBiconnectedTriconnectivity,
 };
 
 /// Implements a static triconnectivity algorithm.
 ///
-/// Using the SPQR-tree structure, this algorithm after a linear preprocessing answers queries in form `Are vertices a and b in the same triconnected component?` in constant time.
+/// Using the SPQR-tree and block-cut tree structures, this algorithm after a linear preprocessing answers queries in form `Are vertices a and b in the same triconnected component?` in constant time.
 ///
-/// Prerequisite: input graph is biconnected
+/// Prerequisite: input graph is connected.
 ///
 /// ## Reference:
 /// - [On-line maintenance of triconnected components with SPQR-trees](https://link.springer.com/article/10.1007/BF01961541)
-pub struct StaticTriconnectivity {
-    tree: RootedSPQRTree,
 
-    s_links: Vec<HashMap<usize, (Option<usize>, Option<usize>)>>,
+pub struct StaticTriconnectivity {
+    tree: BlockCutTree,
+
+    triconnectivity_blocks: Vec<StaticBiconnectedTriconnectivity>, // for each block in the bct we store it's corresponding triconnectivity query structure
+    vertex_numbers_mapping: Vec<HashMap<usize, usize>>, // vertices inside the spqr trees are numbered from 0 to m-1, so here
+    // we map the original vertex numbers to the new ones
+    parent: Vec<Option<usize>>, // for each vertex in the bct we store it's parent
 }
 
 impl StaticTriconnectivity {
     pub fn new(graph: &UnGraph) -> Self {
-        let tree = get_rooted_spqr_tree(&graph);
+        let bct = get_block_cut_tree(&graph);
 
-        let mut s_links = vec![HashMap::new(); tree.adj.len()];
+        let mut triconnectivity_blocks = Vec::with_capacity(bct.blocks.len());
+        let mut vertex_numbers_mapping = Vec::with_capacity(bct.node_to_id.len());
 
-        let mut mark = vec![false; tree.triconnected_components.edges.len()];
-        fn dfs(
-            tree: &RootedSPQRTree,
-            u: usize,
-            mark: &mut Vec<bool>,
-            s_links: &mut Vec<HashMap<usize, (Option<usize>, Option<usize>)>>,
-        ) {
-            for &eid in tree.triconnected_components.components[u].edges.iter() {
-                let (a, b) = tree.triconnected_components.edges[eid];
+        for block in bct.blocks.iter() {
+            triconnectivity_blocks.push(StaticBiconnectedTriconnectivity::new(&block));
 
-                for turn in [a, b] {
-                    if tree.triconnected_components.components[u].component_type == ComponentType::S
-                        && !mark[eid]
-                        && !tree.triconnected_components.is_real_edge[eid]
-                    {
-                        let entry = s_links[u].entry(turn).or_insert((None, None));
-                        if entry.0.is_none() {
-                            entry.0 = Some(eid);
-                        } else {
-                            entry.1 = Some(eid);
-                        }
-                    }
-                }
-
-                mark[eid] = true;
-            }
-
-            for &to in tree.adj[u].iter() {
-                dfs(tree, to, mark, s_links);
+            vertex_numbers_mapping.push(HashMap::new());
+            for (i, v) in block.node_references().enumerate() {
+                vertex_numbers_mapping
+                    .last_mut()
+                    .unwrap()
+                    .insert(*v.1 as usize, i);
             }
         }
 
-        if tree.triconnected_components.components.len() > 0 {
-            dfs(&tree, 0, &mut mark, &mut s_links);
+        let mut parent = vec![None; bct.graph.node_count()];
+        fn dfs(bct: &BlockCutTree, u: usize, parent: &mut Vec<Option<usize>>) {
+            for v in bct.graph.neighbors(bct.graph.from_index(u)) {
+                let to = v.index();
 
-            StaticTriconnectivity { tree, s_links }
-        } else {
-            StaticTriconnectivity {
-                tree,
-                s_links: vec![],
+                if parent[to].is_none() {
+                    parent[to] = Some(u);
+                    dfs(bct, to, parent);
+                }
             }
+        }
+
+        dfs(&bct, 0, &mut parent);
+
+        StaticTriconnectivity {
+            tree: bct,
+            triconnectivity_blocks,
+            vertex_numbers_mapping,
+            parent,
         }
     }
 
-    fn are_poles(&self, a: usize, b: usize, link: Option<usize>) -> bool {
-        if let Some(link) = link {
-            let (s, t) = self.tree.triconnected_components.edges[link];
-            if a == b {
-                return s == b || t == b;
-            } else {
-                return (s, t) == (a, b) || (s, t) == (b, a);
+    fn check_block(&self, block_id: usize, a: usize, b: usize) -> bool {
+        if let Some(a_inside) = self.vertex_numbers_mapping[block_id].get(&a) {
+            if let Some(b_inside) = self.vertex_numbers_mapping[block_id].get(&b) {
+                return self.triconnectivity_blocks[block_id].query(*a_inside, *b_inside, false);
             }
         }
         false
     }
 
-    /// Returns true iff the vertices `a` and `b` are in the same triconnected component.
     pub fn query(&self, a: usize, b: usize, rep: bool) -> bool {
         if a == b {
-            return true;
+            return true; // trivial case
         }
 
-        if self.tree.triconnected_components.components.len() == 0 {
-            return false;
-        }
-
-        let proper_a = self.tree.allocation_node[a];
-        let proper_b = self.tree.allocation_node[b];
-
-        let proper_a_type = self.tree.triconnected_components.components[proper_a].component_type;
-
-        if proper_a == proper_b
-            && (proper_a_type == ComponentType::R || proper_a_type == ComponentType::P)
-        {
-            return true;
-        }
-        if proper_a_type == ComponentType::R {
-            let ref_edge = self.tree.reference_edge[proper_a];
-            if let Some(ref_edge) = ref_edge {
-                let (s, t) = self.tree.triconnected_components.edges[ref_edge];
-                if s == b || t == b {
-                    return true;
-                }
+        if self.tree.node_to_id[a] < self.tree.block_count {
+            // a is fully inside some block
+            if self.check_block(self.tree.node_to_id[a], a, b) {
+                return true;
             }
-        }
-        if proper_a_type == ComponentType::S {
-            if let Some(&(link_1, link_2)) = self.s_links[proper_a].get(&a) {
-                if self.are_poles(a, b, link_1) || self.are_poles(a, b, link_2) {
-                    return true;
-                }
+        } else if let Some(p) = self.parent[self.tree.node_to_id[a]] {
+            // a is a cut vertex, check its parent (a block)
+            if self.check_block(p, a, b) {
+                return true;
             }
         }
 
@@ -129,7 +103,7 @@ impl StaticTriconnectivity {
 mod tests {
     use petgraph::visit::{EdgeRef, IntoNodeReferences};
 
-    use crate::testing::random_graphs::random_biconnected_graph;
+    use crate::testing::random_graphs::random_graph;
 
     use super::*;
 
@@ -193,7 +167,7 @@ mod tests {
             let n = 2 + i / 10;
             let m: usize = 1 + i;
 
-            let in_graph = random_biconnected_graph(n, m, i);
+            let in_graph = random_graph(n, m, i);
 
             let fast_triconnectivity: StaticTriconnectivity = StaticTriconnectivity::new(&in_graph);
             let slow_triconnectivity = StaticTriconnectivityBrute::new(&in_graph);
@@ -212,9 +186,18 @@ mod tests {
     #[cfg(all(test, not(debug_assertions)))]
     #[test]
     fn test_triconnectivity_exhaustive() {
-        use crate::{
-            block_cut::get_block_cut_tree, testing::graph_enumerator::GraphEnumeratorState,
-        };
+        use crate::testing::graph_enumerator::GraphEnumeratorState;
+        use petgraph::graph::NodeIndex;
+        use petgraph::prelude::Dfs;
+
+        fn is_connected(graph: &UnGraph) -> bool {
+            let mut dfs = Dfs::new(graph, NodeIndex::new(0));
+            let mut visited = 0;
+            while let Some(_) = dfs.next(graph) {
+                visited += 1;
+            }
+            visited == graph.node_count()
+        }
 
         for n in 2..=7 {
             let mut enumerator = GraphEnumeratorState {
@@ -224,13 +207,10 @@ mod tests {
             };
 
             while let Some(in_graph) = enumerator.next() {
-                let bct = get_block_cut_tree(&in_graph);
-                if bct.cut_count > 0 || bct.block_count == 0 {
-                    continue; // not biconnected
-                }
-
-                let in_graph = bct.blocks[0].clone();
                 let n = in_graph.node_references().count();
+                if !is_connected(&in_graph) {
+                    continue; // skip disconnected graphs
+                }
 
                 let fast_triconnectivity: StaticTriconnectivity =
                     StaticTriconnectivity::new(&in_graph);
@@ -255,7 +235,7 @@ mod tests {
             let n = 2 + i / 10;
             let m: usize = 1 + i;
 
-            let in_graph = random_biconnected_graph(n, m, i);
+            let in_graph = random_graph(n, m, i);
 
             let fast_triconnectivity: StaticTriconnectivity = StaticTriconnectivity::new(&in_graph);
             let slow_triconnectivity = StaticTriconnectivityBrute::new(&in_graph);
