@@ -7,12 +7,9 @@ use crate::{
 
 /// Counts the number of all combinatorial embeddings of a given planar graph.
 ///
-/// Based on (https://www.ac.tuwien.ac.at/files/pub/Mutzel99.pdf)
-/// and (https://www.sciencedirect.com/science/article/pii/0012365X9390316L)
+/// Based on (https://www.sciencedirect.com/science/article/pii/0012365X9390316L)
 pub fn count_combinatorial_embeddings(graph: &UnGraph) -> usize {
-    let mut embeddings = 1;
     unimplemented!();
-    embeddings
 }
 
 /// Counts the number of combinatorial embeddings in a biconnected planar graph using the SPQR tree.
@@ -35,14 +32,12 @@ pub fn count_combinatorial_embeddings_biconnected(
 ) -> usize {
     let spqr_tree = get_spqr_tree(graph);
     let mut embeddings = 1;
-    let mut p_nodes = 0;
 
     for component in &spqr_tree.triconnected_components.components {
         match component.component_type {
             Some(ComponentType::P) => {
                 let k = component.edges.len();
-                // summing, because each P node contains others P nodes in some virt edge
-                p_nodes += (1..k).product::<usize>();
+                embeddings *= (1..k).product::<usize>();
             }
             Some(ComponentType::R) => {
                 embeddings *= 2;
@@ -50,8 +45,6 @@ pub fn count_combinatorial_embeddings_biconnected(
             _ => continue,
         }
     }
-
-    embeddings *= if p_nodes == 0 { 1 } else { p_nodes };
 
     embeddings
 }
@@ -119,7 +112,7 @@ mod tests {
 
 
         let embeddings = count_combinatorial_embeddings_biconnected(&graph);
-        assert_eq!(embeddings, 8); // only one way to embed a bond
+        assert_eq!(embeddings, 16);
     }
 
 }
