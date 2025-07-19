@@ -7,7 +7,9 @@ use crate::{
 };
 use hashbrown::{HashMap};
 
-/// Counts the number of all combinatorial embeddings of a given planar graph in O(V + E).
+/// Counts the number of all combinatorial planar embeddings of a given planar graph in O(V + E).
+///
+/// Combinatorial embedding is defined by clockwise (or anticlockwise) order of edges around each vertex.
 ///
 /// Based on (https://www.sciencedirect.com/science/article/pii/0012365X9390316L)
 ///
@@ -15,6 +17,9 @@ use hashbrown::{HashMap};
 /// - `block_emb` - number of combinatorial embeddings for each block in the block-cut tree
 /// - `deg_in_bc` - degree of the cut vertex in the block-cut tree
 /// - `edges_adj_v` - number of edges (from original graph) adjacent to the cut vertex (for each block)
+///
+/// This algorithm cna give you an idea how to go through all the embeddings and choose appropriate
+/// based on given conditions.
 pub fn count_combinatorial_embeddings(graph: &UnGraph) -> usize {
     let bc_tree = get_block_cut_tree(graph);
 
@@ -74,7 +79,7 @@ pub fn count_combinatorial_embeddings(graph: &UnGraph) -> usize {
     embeddings
 }
 
-/// Counts the number of combinatorial embeddings in a biconnected planar graph using the SPQR tree.
+/// Counts the number of combinatorial planar embeddings in a biconnected planar graph using the SPQR tree.
 ///
 /// Combinatorial embedding is defined by clockwise (or anticlockwise) order of edges around each vertex.
 ///
@@ -289,9 +294,7 @@ mod tests {
 
     #[test]
     fn test_count_combinatorial_embeddings_random_tree() {
-        let graph = crate::testing::random_graphs::random_tree(7, 42);
-        let embeddings = count_combinatorial_embeddings(&graph);
-
+        // for tree this is simple: for all v, product((deg(v)-1)!)
         fn brute_embeddings_tree(tree: &UnGraph) -> usize {
             if tree.node_count() <= 1 {
                 return 1;
@@ -302,9 +305,11 @@ mod tests {
             }
             embeddings
         }
-
-        let brute = brute_embeddings_tree(&graph);
-        assert_eq!(embeddings, brute);
-
+        for n in 1..1000 {
+            let graph = crate::testing::random_graphs::random_tree(7, 42);
+            let embeddings = count_combinatorial_embeddings(&graph);
+            let brute = brute_embeddings_tree(&graph);
+            assert_eq!(embeddings, brute);
+        }
     }
 }
