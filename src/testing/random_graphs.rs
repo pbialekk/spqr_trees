@@ -36,6 +36,22 @@ pub(crate) fn random_connected_graph(n: usize, m: usize, seed: usize) -> UnGraph
     graph
 }
 
+/// Generates a random tree.
+pub(crate) fn random_tree(n: usize, seed: usize) -> UnGraph {
+    let mut rng = StdRng::seed_from_u64(seed as u64);
+    let mut graph = UnGraph::new_undirected();
+
+    for i in 0..n {
+        graph.add_node(i.try_into().unwrap());
+        if i > 0 {
+            let j = rng.random_range(0..i);
+            graph.add_edge(graph.from_index(i), graph.from_index(j), EdgeLabel::Real);
+        }
+    }
+
+    graph
+} 
+
 /// Generates a random biconnected graph.
 /// Takes first biconnected component of BC Tree of a random graph.
 pub(crate) fn random_biconnected_graph(n: usize, m: usize, seed: usize) -> UnGraph {

@@ -2,7 +2,7 @@ use petgraph::graph::NodeIndex;
 use crate::{EdgeLabel, UnGraph};
 
 /// Generates a grid graph with the specified number of rows and columns.
-pub fn generate_grid_graph(rows: usize, cols: usize) -> UnGraph {
+pub(crate) fn generate_grid_graph(rows: usize, cols: usize) -> UnGraph {
     let mut graph = UnGraph::new_undirected();
 
     for r in 0..rows {
@@ -14,10 +14,10 @@ pub fn generate_grid_graph(rows: usize, cols: usize) -> UnGraph {
     for r in 0..rows {
         for c in 0..cols {
             if r + 1 < rows {
-                graph.add_edge(NodeIndex::new(r), NodeIndex::new(r + 1), EdgeLabel::Real);
+                graph.add_edge(NodeIndex::new(r * cols + c), NodeIndex::new((r + 1) * cols + c), EdgeLabel::Real);
             }
             if c + 1 < cols {
-                graph.add_edge(NodeIndex::new(c), NodeIndex::new(c + 1), EdgeLabel::Real);
+                graph.add_edge(NodeIndex::new(r * cols + c), NodeIndex::new(r * cols + c + 1), EdgeLabel::Real);
             }
         }
     }

@@ -2,7 +2,7 @@ use embed_doc_image::embed_doc_image;
 use crate::{DFSEdgeLabel, EdgeLabel, UnGraph};
 use petgraph::graph::{EdgeIndex, NodeIndex};
 use petgraph::visit::{EdgeRef, NodeIndexable};
-use hashbrown::HashSet;
+use hashbrown::{HashSet};
 use radsort;
 
 /// Represents the block-cut tree of a graph, containing blocks, cut vertices, and their relationships.

@@ -24,6 +24,7 @@ use std::io::{BufRead, BufReader, Cursor};
 /// - Graph does not have to be connected, but later you will get errors.
 /// - Parser will allow self-loops, but they will be ignored.
 /// - Parallel edges are fully supported.
+/// - If you want to build your graph manually, remember node labels must be unique.
 ///
 /// </div>
 ///
