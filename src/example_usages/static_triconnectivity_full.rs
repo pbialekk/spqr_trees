@@ -75,6 +75,7 @@ impl StaticTriconnectivity {
         false
     }
 
+    /// Returns true iff the vertices `a` and `b` are in the same triconnected component.
     pub fn query(&self, a: usize, b: usize, rep: bool) -> bool {
         if a == b {
             return true; // trivial case

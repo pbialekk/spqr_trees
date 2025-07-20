@@ -19,7 +19,7 @@ pub mod triconnected_blocks;
 
 pub mod spqr_blocks;
 pub mod spqr_tree;
-pub mod testing;
+pub(crate) mod testing;
 
 pub mod example_usages;
 
