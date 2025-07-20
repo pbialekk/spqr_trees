@@ -18,7 +18,7 @@ use hashbrown::{HashMap};
 /// - `deg_in_bc` - degree of the cut vertex in the block-cut tree
 /// - `edges_adj_v` - number of edges (from original graph) adjacent to the cut vertex (for each block)
 ///
-/// This algorithm cna give you an idea how to go through all the embeddings and choose appropriate
+/// This algorithm can give you an idea how to go through all the embeddings and choose appropriate
 /// based on given conditions.
 pub fn count_combinatorial_embeddings(graph: &UnGraph) -> usize {
     let bc_tree = get_block_cut_tree(graph);
