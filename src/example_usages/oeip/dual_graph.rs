@@ -45,7 +45,7 @@ pub struct DualGraph {
 /// - `graph` - graph.
 ///
 /// Based on (https://cp-algorithms.com/geometry/planar.html).
-fn get_dual_graph(points: &[Point], graph: &UnGraph) -> DualGraph {
+pub fn get_dual_graph(points: &[Point], graph: &UnGraph) -> DualGraph {
     let n = points.len();
     assert!(graph.edge_count() > 0); // no edges => algorithm fails
     let mut adj: Vec<Vec<usize>> = vec![vec![]; n];
