@@ -104,7 +104,7 @@ impl StaticTriconnectivity {
 mod tests {
     use petgraph::visit::{EdgeRef, IntoNodeReferences};
 
-    use crate::testing::random_graphs::random_graph;
+    use crate::testing::random_graphs::random_connected_graph;
 
     use super::*;
 
@@ -168,7 +168,7 @@ mod tests {
             let n = 2 + i / 10;
             let m: usize = 1 + i;
 
-            let in_graph = random_graph(n, m, i);
+            let in_graph = random_connected_graph(n, m, i);
 
             let fast_triconnectivity: StaticTriconnectivity = StaticTriconnectivity::new(&in_graph);
             let slow_triconnectivity = StaticTriconnectivityBrute::new(&in_graph);
@@ -236,7 +236,7 @@ mod tests {
             let n = 2 + i / 10;
             let m: usize = 1 + i;
 
-            let in_graph = random_graph(n, m, i);
+            let in_graph = random_connected_graph(n, m, i);
 
             let fast_triconnectivity: StaticTriconnectivity = StaticTriconnectivity::new(&in_graph);
             let slow_triconnectivity = StaticTriconnectivityBrute::new(&in_graph);

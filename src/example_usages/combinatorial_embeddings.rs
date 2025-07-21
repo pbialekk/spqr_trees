@@ -106,11 +106,11 @@ pub fn count_combinatorial_embeddings_biconnected(
 
     for component in &spqr_tree.triconnected_components.components {
         match component.component_type {
-            Some(ComponentType::P) => {
+            ComponentType::P => {
                 let k = component.edges.len();
                 embeddings *= (1..k).product::<usize>();
             }
-            Some(ComponentType::R) => {
+            ComponentType::R => {
                 embeddings *= 2;
             }
             _ => continue,

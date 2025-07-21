@@ -7,8 +7,7 @@ use crate::{
 
 /// Implements a static triconnectivity algorithm.
 ///
-/// Using the SPQR-tree structure, this algorithm after a linear preprocessing answers queries in form
-/// `Are vertices a and b in the same triconnected component?` in constant time.
+/// Using the SPQR-tree structure, this algorithm after a linear preprocessing answers queries in form `Are vertices a and b in the same triconnected component?` in constant time.
 ///
 /// Prerequisite: input graph is biconnected
 ///
