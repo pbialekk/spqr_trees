@@ -20,7 +20,7 @@ pub(crate) fn merge_components(m: usize, split_components: &mut Vec<Component>) 
         if merged_already[i] {
             continue;
         }
-        if component.component_type == Some(ComponentType::R) {
+        if component.component_type == ComponentType::R {
             ret.push(component.clone());
             continue;
         }

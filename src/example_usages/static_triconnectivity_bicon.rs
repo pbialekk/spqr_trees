@@ -1,8 +1,7 @@
 use hashbrown::HashMap;
-use petgraph::visit::IntoNodeReferences;
 
 use crate::{
-    UnGraph, spqr_blocks::outside_structures::SPQRTree, spqr_tree::get_spqr_tree,
+    UnGraph, spqr_blocks::outside_structures::RootedSPQRTree, spqr_tree::get_rooted_spqr_tree,
     triconnected_blocks::outside_structures::ComponentType,
 };
 
@@ -15,48 +14,31 @@ use crate::{
 ///
 /// ## Reference:
 /// - [On-line maintenance of triconnected components with SPQR-trees](https://link.springer.com/article/10.1007/BF01961541)
-pub struct StaticTriconnectivity {
-    tree: SPQRTree,
 
-    reference_edge: Vec<Option<usize>>,
-    allocation_node: Vec<usize>,
+pub struct StaticBiconnectedTriconnectivity {
+    tree: RootedSPQRTree,
+
     s_links: Vec<HashMap<usize, (Option<usize>, Option<usize>)>>,
 }
 
-impl StaticTriconnectivity {
+impl StaticBiconnectedTriconnectivity {
     pub fn new(graph: &UnGraph) -> Self {
-        let tree = get_spqr_tree(&graph);
+        let tree = get_rooted_spqr_tree(&graph);
 
-        let mut reference_edge = vec![None; tree.adj.len()];
-        let mut allocation_node = vec![None; graph.node_references().count()];
         let mut s_links = vec![HashMap::new(); tree.adj.len()];
 
-        // We have to make our tree rooted in order to efficiently answer queries.
-
         let mut mark = vec![false; tree.triconnected_components.edges.len()];
-        fn root_tree(
-            tree: &SPQRTree,
-            reference_edge: &mut Vec<Option<usize>>,
-            allocation_node: &mut Vec<Option<usize>>,
+        fn dfs(
+            tree: &RootedSPQRTree,
             u: usize,
-            parent: Option<usize>,
             mark: &mut Vec<bool>,
             s_links: &mut Vec<HashMap<usize, (Option<usize>, Option<usize>)>>,
         ) {
             for &eid in tree.triconnected_components.components[u].edges.iter() {
-                if mark[eid] {
-                    reference_edge[u] = Some(eid);
-                }
-
                 let (a, b) = tree.triconnected_components.edges[eid];
 
                 for turn in [a, b] {
-                    if allocation_node[turn].is_none() {
-                        allocation_node[turn] = Some(u);
-                    }
-
-                    if tree.triconnected_components.components[u].component_type
-                        == Some(ComponentType::S)
+                    if tree.triconnected_components.components[u].component_type == ComponentType::S
                         && !mark[eid]
                         && !tree.triconnected_components.is_real_edge[eid]
                     {
@@ -73,43 +55,17 @@ impl StaticTriconnectivity {
             }
 
             for &to in tree.adj[u].iter() {
-                if Some(to) == parent {
-                    continue;
-                }
-                root_tree(
-                    tree,
-                    reference_edge,
-                    allocation_node,
-                    to,
-                    Some(u),
-                    mark,
-                    s_links,
-                );
+                dfs(tree, to, mark, s_links);
             }
         }
 
         if tree.triconnected_components.components.len() > 0 {
-            root_tree(
-                &tree,
-                &mut reference_edge,
-                &mut allocation_node,
-                0,
-                None,
-                &mut mark,
-                &mut s_links,
-            );
+            dfs(&tree, 0, &mut mark, &mut s_links);
 
-            StaticTriconnectivity {
-                tree,
-                reference_edge,
-                allocation_node: allocation_node.into_iter().map(|x| x.unwrap()).collect(),
-                s_links,
-            }
+            StaticBiconnectedTriconnectivity { tree, s_links }
         } else {
-            StaticTriconnectivity {
+            StaticBiconnectedTriconnectivity {
                 tree,
-                reference_edge: vec![],
-                allocation_node: vec![],
                 s_links: vec![],
             }
         }
@@ -137,18 +93,18 @@ impl StaticTriconnectivity {
             return false;
         }
 
-        let proper_a = self.allocation_node[a];
-        let proper_b = self.allocation_node[b];
+        let proper_a = self.tree.allocation_node[a];
+        let proper_b = self.tree.allocation_node[b];
 
         let proper_a_type = self.tree.triconnected_components.components[proper_a].component_type;
 
         if proper_a == proper_b
-            && (proper_a_type == Some(ComponentType::R) || proper_a_type == Some(ComponentType::P))
+            && (proper_a_type == ComponentType::R || proper_a_type == ComponentType::P)
         {
             return true;
         }
-        if proper_a_type == Some(ComponentType::R) {
-            let ref_edge = self.reference_edge[proper_a];
+        if proper_a_type == ComponentType::R {
+            let ref_edge = self.tree.reference_edge[proper_a];
             if let Some(ref_edge) = ref_edge {
                 let (s, t) = self.tree.triconnected_components.edges[ref_edge];
                 if s == b || t == b {
@@ -156,7 +112,7 @@ impl StaticTriconnectivity {
                 }
             }
         }
-        if proper_a_type == Some(ComponentType::S) {
+        if proper_a_type == ComponentType::S {
             if let Some(&(link_1, link_2)) = self.s_links[proper_a].get(&a) {
                 if self.are_poles(a, b, link_1) || self.are_poles(a, b, link_2) {
                     return true;
@@ -173,14 +129,9 @@ impl StaticTriconnectivity {
 
 #[cfg(test)]
 mod tests {
-    use petgraph::visit::EdgeRef;
+    use petgraph::visit::{EdgeRef, IntoNodeReferences};
 
-    use crate::{
-        block_cut::get_block_cut_tree,
-        testing::{
-            graph_enumerator::GraphEnumeratorState, random_graphs::random_biconnected_graph,
-        },
-    };
+    use crate::testing::random_graphs::random_biconnected_graph;
 
     use super::*;
 
@@ -239,14 +190,15 @@ mod tests {
     }
 
     #[test]
-    fn test_triconnectivity_light() {
+    fn test_bicon_triconnectivity_light() {
         for i in 0..100 {
             let n = 2 + i / 10;
             let m: usize = 1 + i;
 
             let in_graph = random_biconnected_graph(n, m, i);
 
-            let fast_triconnectivity: StaticTriconnectivity = StaticTriconnectivity::new(&in_graph);
+            let fast_triconnectivity: StaticBiconnectedTriconnectivity =
+                StaticBiconnectedTriconnectivity::new(&in_graph);
             let slow_triconnectivity = StaticTriconnectivityBrute::new(&in_graph);
 
             for u in 0..n {
@@ -262,7 +214,11 @@ mod tests {
 
     #[cfg(all(test, not(debug_assertions)))]
     #[test]
-    fn test_triconnectivity_exhaustive() {
+    fn test_bicon_triconnectivity_exhaustive() {
+        use crate::{
+            block_cut::get_block_cut_tree, testing::graph_enumerator::GraphEnumeratorState,
+        };
+
         for n in 2..=7 {
             let mut enumerator = GraphEnumeratorState {
                 n,
@@ -279,8 +235,8 @@ mod tests {
                 let in_graph = bct.blocks[0].clone();
                 let n = in_graph.node_references().count();
 
-                let fast_triconnectivity: StaticTriconnectivity =
-                    StaticTriconnectivity::new(&in_graph);
+                let fast_triconnectivity: StaticBiconnectedTriconnectivity =
+                    StaticBiconnectedTriconnectivity::new(&in_graph);
                 let slow_triconnectivity = StaticTriconnectivityBrute::new(&in_graph);
 
                 for u in 0..n {
@@ -297,14 +253,15 @@ mod tests {
 
     #[cfg(all(test, not(debug_assertions)))]
     #[test]
-    fn test_triconnectivity() {
+    fn test_bicon_triconnectivity() {
         for i in 0..1000 {
             let n = 2 + i / 10;
             let m: usize = 1 + i;
 
             let in_graph = random_biconnected_graph(n, m, i);
 
-            let fast_triconnectivity: StaticTriconnectivity = StaticTriconnectivity::new(&in_graph);
+            let fast_triconnectivity: StaticBiconnectedTriconnectivity =
+                StaticBiconnectedTriconnectivity::new(&in_graph);
             let slow_triconnectivity = StaticTriconnectivityBrute::new(&in_graph);
 
             for u in 0..n {

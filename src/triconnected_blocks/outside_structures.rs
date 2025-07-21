@@ -1,7 +1,7 @@
 use crate::triconnected_blocks::graph_internal::GraphInternal;
 
 #[derive(Debug, Clone, PartialEq)]
-pub enum EdgeType {
+pub(crate) enum EdgeType {
     Tree,
     Back,
     Killed,
@@ -14,9 +14,10 @@ pub enum EdgeType {
 /// - `R`: Triconnected component (rigid)
 #[derive(Debug, Clone, PartialEq, Copy)]
 pub enum ComponentType {
-    P, // bond
-    S, // triangle
-    R, // triconnected
+    P,      // bond
+    S,      // triangle
+    R,      // triconnected
+    UNSURE, // used for initial state
 }
 
 impl std::fmt::Display for ComponentType {
@@ -25,6 +26,9 @@ impl std::fmt::Display for ComponentType {
             ComponentType::P => write!(f, "P"),
             ComponentType::S => write!(f, "S"),
             ComponentType::R => write!(f, "R"),
+            &ComponentType::UNSURE => {
+                panic!();
+            }
         }
     }
 }
@@ -35,11 +39,11 @@ impl std::fmt::Display for ComponentType {
 #[derive(Debug, Clone)]
 pub struct Component {
     pub edges: Vec<usize>,
-    pub component_type: Option<ComponentType>,
+    pub component_type: ComponentType,
 }
 
 impl Component {
-    pub(crate) fn new(component_type: Option<ComponentType>) -> Self {
+    pub(crate) fn new(component_type: ComponentType) -> Self {
         Self {
             edges: Vec::new(),
             component_type,
@@ -61,12 +65,12 @@ impl Component {
     }
 
     pub(crate) fn commit(&mut self, split_components: &mut Vec<Component>) {
-        if self.component_type.is_none() {
-            self.component_type = Some(if self.edges.len() >= 4 {
+        if self.component_type == ComponentType::UNSURE {
+            self.component_type = if self.edges.len() >= 4 {
                 ComponentType::R
             } else {
                 ComponentType::S
-            });
+            };
         }
 
         split_components.push(self.clone());
@@ -78,7 +82,7 @@ impl Component {
 /// Contains a list of components, edges, and additional metadata about the edges.
 ///
 /// - `components`: List of components in the triconnected decomposition.
-/// - `edges`: List of edges in the original graph.
+/// - `edges`: List of edges in the graph. Also contains the virtual edges created during the splitting process.
 /// - `is_real_edge`: Indicates if an edge is a real edge in the original graph.
 /// - `real_to_split`: Maps edges to their corresponding split components. Virtual edges are mapped to `None`.
 #[derive(Debug, Clone)]

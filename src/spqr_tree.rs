@@ -1,7 +1,9 @@
 use embed_doc_image::embed_doc_image;
 
 use crate::{
-    UnGraph, spqr_blocks::outside_structures::SPQRTree, triconnected::get_triconnected_components,
+    UnGraph,
+    spqr_blocks::outside_structures::{RootedSPQRTree, SPQRTree},
+    triconnected::get_triconnected_components,
 };
 
 /// ## Overwiew
@@ -38,18 +40,59 @@ pub fn get_spqr_tree(graph: &UnGraph) -> SPQRTree {
     spqr_tree
 }
 
+/// ## Overwiew
+/// Given a biconnected graph `G`, this function returns its rooted SPQR tree at the first component.
+///
+/// After rooting the tree, `adj[u]` doesn't contain the parent component of `u` in the SPQR tree.
+pub fn get_rooted_spqr_tree(graph: &UnGraph) -> RootedSPQRTree {
+    let unrooted_spqr = get_spqr_tree(graph);
+    let mut rooted_spqr = RootedSPQRTree::new(&unrooted_spqr);
+
+    let mut mark = vec![false; rooted_spqr.triconnected_components.edges.len()];
+    fn root_tree(tree: &mut RootedSPQRTree, u: usize, mark: &mut Vec<bool>) {
+        for &eid in tree.triconnected_components.components[u].edges.iter() {
+            if mark[eid] {
+                tree.reference_edge[u] = Some(eid);
+            }
+
+            let (a, b) = tree.triconnected_components.edges[eid];
+
+            for turn in [a, b] {
+                if tree.allocation_node[turn] == usize::MAX {
+                    tree.allocation_node[turn] = u;
+                }
+            }
+
+            mark[eid] = true;
+        }
+
+        // remove edge to parent
+        if let Some(parent) = tree.parent_node[u] {
+            tree.adj[u].retain(|&x| x != parent);
+        }
+
+        let neighbors = tree.adj[u].clone();
+
+        for &to in neighbors.iter() {
+            tree.parent_node[to] = Some(u);
+            root_tree(tree, to, mark);
+        }
+    }
+
+    if rooted_spqr.triconnected_components.components.len() > 0 {
+        root_tree(&mut rooted_spqr, 0, &mut mark);
+    }
+
+    rooted_spqr
+}
+
 #[cfg(test)]
 mod tests {
     use std::mem;
 
     use petgraph::visit::{EdgeRef, IntoNodeReferences};
 
-    use crate::{
-        block_cut::get_block_cut_tree,
-        testing::{
-            graph_enumerator::GraphEnumeratorState, random_graphs::random_biconnected_graph,
-        },
-    };
+    use crate::testing::random_graphs::random_biconnected_graph;
 
     use super::*;
 
@@ -145,6 +188,10 @@ mod tests {
     #[cfg(all(test, not(debug_assertions)))]
     #[test]
     fn test_spqr_tree_exhaustive() {
+        use crate::{
+            block_cut::get_block_cut_tree, testing::graph_enumerator::GraphEnumeratorState,
+        };
+
         for n in 2..=7 {
             let mut enumerator = GraphEnumeratorState {
                 n,

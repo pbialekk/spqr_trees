@@ -10,6 +10,8 @@ use rand::rngs::StdRng;
 /// It allows multiple edges and self-loops.
 /// Based on spanning tree.
 pub(crate) fn random_connected_graph(n: usize, m: usize, seed: usize) -> UnGraph {
+#[allow(dead_code)]
+pub(crate) fn random_graph(n: usize, m: usize, seed: usize) -> UnGraph {
     let mut rng = StdRng::seed_from_u64(seed as u64);
     let mut graph = UnGraph::new_undirected();
 
@@ -54,6 +56,7 @@ pub(crate) fn random_tree(n: usize, seed: usize) -> UnGraph {
 
 /// Generates a random biconnected graph.
 /// Takes first biconnected component of BC Tree of a random graph.
+#[allow(dead_code)]
 pub(crate) fn random_biconnected_graph(n: usize, m: usize, seed: usize) -> UnGraph {
     let graph = random_connected_graph(n, m, seed);
 
