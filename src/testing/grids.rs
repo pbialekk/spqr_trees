@@ -2,7 +2,7 @@ use crate::{EdgeLabel, UnGraph};
 use petgraph::graph::NodeIndex;
 
 /// Generates a grid graph with the specified number of rows and columns.
-pub(crate) fn generate_grid_graph(rows: usize, cols: usize) -> UnGraph {
+pub fn generate_grid_graph(rows: usize, cols: usize) -> UnGraph {
     assert!(rows > 1 && cols > 1); // we want biconnected graph
     let mut graph = UnGraph::new_undirected();
 

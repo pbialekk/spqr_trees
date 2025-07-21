@@ -127,7 +127,20 @@ pub fn get_dual_graph(points: &[Point], graph: &UnGraph) -> DualGraph {
                 e = e1;
             }
             face.order.reverse();
-            faces.push(face);
+            let p1 = points[face.order[0]];
+            let mut sum: i128 = 0;
+            for j in 0..face.order.len() {
+                let p2 = points[face.order[j]];
+                let p3 = points[face.order[(j + 1) % face.order.len()]];
+                sum += p2.cross2(&p1, &p3) as i128;
+            }
+            if sum <= 0 {
+                faces.reverse();
+                faces.push(face);
+                faces.reverse();
+            } else {
+                faces.push(face);
+            }
         }
     }
 
