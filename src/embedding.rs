@@ -62,7 +62,7 @@ mod tests {
 
     use super::*;
 
-    fn verify_embedding(graph: &UnGraph, embedding: &DiGraph, output: &mut String) {
+    fn verify_embedding(embedding: &DiGraph, output: &mut String) {
         let mut edges = String::new();
 
         for v in embedding.node_indices() {
@@ -86,7 +86,7 @@ mod tests {
         let (is_planar, counterexample) = is_planar(&graph, true);
 
         if is_planar {
-            verify_embedding(&graph, &counterexample, output);
+            verify_embedding(&counterexample, output);
         } else {
             output.push_str("-\n");
         }
