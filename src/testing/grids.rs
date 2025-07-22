@@ -2,6 +2,7 @@ use crate::{EdgeLabel, UnGraph};
 use petgraph::graph::NodeIndex;
 
 /// Generates a grid graph with the specified number of rows and columns.
+#[allow(dead_code)]
 pub fn generate_grid_graph(rows: usize, cols: usize) -> UnGraph {
     assert!(rows > 1 && cols > 1); // we want biconnected graph
     let mut graph = UnGraph::new_undirected();
@@ -55,6 +56,7 @@ impl Point {
     }
 }
 
+#[allow(dead_code)]
 pub fn get_arbitrary_embedding_of_grid(rows: usize, cols: usize) -> Vec<Point> {
     let mut points = vec![Point { x: 0, y: 0 }; rows * cols];
     for r in 0..rows {
@@ -67,6 +69,7 @@ pub fn get_arbitrary_embedding_of_grid(rows: usize, cols: usize) -> Vec<Point> {
 }
 
 mod tests {
+    #[allow(unused_imports)]
     use super::*;
 
     #[test]

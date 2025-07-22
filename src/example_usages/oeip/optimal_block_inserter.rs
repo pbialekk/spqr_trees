@@ -359,6 +359,7 @@ impl OptimalBlockInserter {
 }
 
 mod tests {
+    #![allow(unused_imports)]
     use crate::EdgeLabel;
     use crate::testing::grids::{generate_grid_graph, get_arbitrary_embedding_of_grid};
     use super::*;
@@ -394,6 +395,7 @@ mod tests {
         assert_eq!(reduced_path.len(), 0);
     }
 
+    #[allow(dead_code)]
     fn brute_grid_crossings(rows: usize, cols: usize, u: usize, v: usize) -> i32 {
         if u == v {
             return 0;
@@ -426,14 +428,14 @@ mod tests {
     #[cfg(all(test, not(debug_assertions)))]
     #[test]
     fn test_oeip() {
-        for r in 2..10 {
-            for c in 2..10 {
+        for r in 2..11 {
+            for c in 2..11 {
                 let graph = generate_grid_graph(r, c);
                 let points = get_arbitrary_embedding_of_grid(r, c);
                 let block_inserter = OptimalBlockInserter::new(&graph, points);
 
                 for u in 0..r * c {
-                    for v in u..r * c {
+                    for v in 0..r * c {
                         let crossings = block_inserter.oeip(u, v);
                         let brute_crossings = brute_grid_crossings(r, c, u, v);
                         assert_eq!(crossings, brute_crossings, "Failed for grid {}x{} with u={} and v={}", r, c, u, v);

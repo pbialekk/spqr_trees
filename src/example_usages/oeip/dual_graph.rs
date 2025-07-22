@@ -169,10 +169,12 @@ pub fn get_dual_graph(points: &[Point], graph: &UnGraph) -> DualGraph {
 }
 
 mod tests {
+    #![allow(unused_imports)]
     use super::*;
     use crate::testing::grids::{get_arbitrary_embedding_of_grid, generate_grid_graph};
     use petgraph::algo::isomorphism::{is_isomorphic};
 
+    #[allow(dead_code)]
     fn get_iso_dual_graph_of_grid(rows: usize, cols: usize) -> UnGraph {
         assert!(rows > 2 && cols > 2);
         let mut dual_graph = generate_grid_graph(rows - 1, cols - 1);

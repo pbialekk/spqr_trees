@@ -78,7 +78,7 @@ pub fn count_combinatorial_embeddings(graph: &UnGraph) -> usize {
     // but restricted to not contain interlacing (1 1 1 2 2 1 1 2 2 2 - numbers indicate component of edge)
     for i in 0..bc_tree.cut_count {
         for j in 1..deg_in_bc[i] - 1 {
-            embeddings *= (deg_in_og[i] - j);
+            embeddings *= deg_in_og[i] - j;
         }
     }
 
@@ -127,6 +127,7 @@ pub fn count_combinatorial_embeddings_biconnected(
 }
 
 mod tests {
+    #![allow(unused_imports)]
     use super::*;
     use crate::EdgeLabel;
 
