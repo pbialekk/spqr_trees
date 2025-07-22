@@ -7,13 +7,59 @@ use crate::{UnGraph, spqr_blocks::outside_structures::SPQRTree, spqr_tree::get_s
 use crate::example_usages::oeip::dual_graph::get_dual_graph;
 use crate::testing::grids::Point;
 
+/// Solves the Optimal Edge Insertion Problem (OEIP) for a given biconnected planar graph.
+///
+/// ## Statement:
+/// The Optimal Edge Insertion Problem (OEIP) is the problem of inserting an edge `(u, v)` into a biconnected planar graph
+/// such that the number of crossings is minimized.
+///
+/// ## Prerequisites:
+/// - input graph is biconnected and planar,
+/// - you can provide arbitrary embedding of the graph as a vector of points.
+///
+/// ## Idea:
+/// 1. Compute SPQR tree of the input graph.
+/// 2. Find the shortest path between arbitrary allocation nodes of `u` and `v` in the SPQR tree.
+/// 3. Delete S and P nodes from the path. You can always insert edge without crossing.
+/// Leave R nodes, they are easy problems because they have only 2 embeddings.
+/// 4. For each R node in the path, iteratively, expand its edges (without virtual edges of `u` and `v`).
+/// + Find arbitrary embedding of the expanded graph.
+/// + Construct dual graph of the expanded graph.
+/// + Add two new nodes to the dual graph, one for `u` and one for `v`. Connect them to adjacent faces.
+/// + Find the shortest path between `u'` and `v'` in the dual graph.
+/// This is your number of crossings in this component.
+/// 5. Sum up the number of crossings for all R nodes in the path.
+///
+/// ## Testing:
+/// We only tested this algorithm on grid graphs.
+/// We can easily compute the number of crossings for any pair of vertices in a grid graph by hand.
+/// It is done in tests section.
+///
+/// ## Complexity:
+/// Almost all operations are linear in the size of the input graph.
+/// But finding the dual graph is `O(nlog(n))`.
+/// So overall complexity is dependent of construction of the dual graph.
+///
+/// NOTE:
+/// - SPQR construction is linear.
+/// - Finding path is linear.
+/// - We also expand only the necessary part of skeleton graph.
+///
+/// ## Reference:
+/// - [Optimal Edge Insertion Problem](https://www.ac.tuwien.ac.at/files/pub/Gutwenger01.pdf)
 #[derive(Debug, Clone)]
 pub struct OptimalBlockInserter {
+    /// Input graph
     graph: UnGraph,
+    /// Arbitrary embedding
     points: Vec<Point>,
+    /// SPQR tree of the input graph
     tree: SPQRTree,
+    /// Set of vertices in each component of the SPQR tree
     component_vertex_set: Vec<HashSet<usize>>,
+    /// Arbitrary allocation node for each vertex in the input graph
     first_allocation_node: Vec<usize>,
+    /// Map of pairs of components to virtual edge id in the SPQR tree
     pair_of_components_to_virt_edge: HashMap<(usize, usize), usize>,
 }
 
@@ -67,6 +113,7 @@ impl OptimalBlockInserter {
             for (i, component) in tree.triconnected_components.components.iter().enumerate() {
                 for &eid in component.edges.iter() {
                     if virt_edges.contains_key(&eid) {
+                        // add both pairs just for convenience
                         pair_of_components_to_virt_edge.insert((virt_edges[&eid], i), eid);
                         pair_of_components_to_virt_edge.insert((i, virt_edges[&eid]), eid);
                     } else {
@@ -139,7 +186,7 @@ impl OptimalBlockInserter {
                     return true;
                 }
             }
-            return false
+            false
         }
 
         find_path(&self.tree, start, end, None, &mut path);
@@ -192,9 +239,7 @@ impl OptimalBlockInserter {
     }
 
     /// Returns the optimal number of crossings when inserting edge (u, v) into graph.
-    ///
-    /// Prerequisite: input graph is biconnected
-    pub fn oeip(&self, u: usize, v: usize) -> i64 {
+    pub fn oeip(&self, u: usize, v: usize) -> i32 {
         if u == v {
             return 0;
         }
@@ -222,12 +267,14 @@ impl OptimalBlockInserter {
                 if Some(to) == parent {
                     continue;
                 }
+                // We don't want to expand marked virtual edges
                 if !marked_edges[pair_of_components_to_virt_edge[&(u, to)]] {
                     expand_skeleton(tree, edges, marked_edges, to, Some(u), pair_of_components_to_virt_edge);
                 }
             }
         }
 
+        // Iterate through path
         for (i, node) in path.iter().enumerate() {
             if self.tree.triconnected_components.components[*node].component_type != ComponentType::R {
                 continue; // if deleted there were problems with prev and next
@@ -250,10 +297,10 @@ impl OptimalBlockInserter {
             }
 
             expand_skeleton(&self.tree, &mut edges, &marked_edges, *node, None, &self.pair_of_components_to_virt_edge);
-            println!("expanded edges: {:?}", edges);
 
             let mut expanded_graph = UnGraph::new_undirected();
             let mut node_to_expanded = HashMap::new();
+            // Construct expanded graph
             for &eid in edges.iter() {
                 let (a, b) = self.tree.triconnected_components.edges[eid];
                 for turn in [a, b] {
@@ -265,7 +312,7 @@ impl OptimalBlockInserter {
                 expanded_graph.add_edge(node_to_expanded[&a], node_to_expanded[&b], EdgeLabel::Real);
             }
 
-            let mut points = vec![]; // TODO: there is a evil bug
+            let mut points = vec![];
             for id in expanded_graph.node_indices() {
                 let point = self.points[*expanded_graph.node_weight(id).unwrap() as usize];
                 points.push(point);
@@ -273,43 +320,37 @@ impl OptimalBlockInserter {
 
             let mut dual_graph = get_dual_graph(&points, &expanded_graph);
 
-            // augment dual graph with src and dst
+            // Augment dual graph with src and dst
             let x1 = dual_graph.graph.node_count();
             let x1id = dual_graph.graph.add_node(x1 as u32);
             let x2 = dual_graph.graph.node_count();
             let x2id = dual_graph.graph.add_node(x2 as u32);
 
-            if let Some(u_virt_edge) = u_virt_edge {
-                dual_graph.graph.add_edge(0.into(), x1id, EdgeLabel::Structure);
+            if let Some(_u_virt_edge) = u_virt_edge {
+                // Not present in skeleton
+                dual_graph.graph.add_edge(NodeIndex::new(dual_graph.outer_face), x1id, EdgeLabel::Structure);
             } else {
-                println!("u:");
                 for (i, face) in dual_graph.faces.iter().enumerate() {
                     if face.vertices.contains(&node_to_expanded[&u].index()) {
-                        println!("{i}");
                         dual_graph.graph.add_edge(NodeIndex::new(i), x1id, EdgeLabel::Structure);
                     }
                 }
             }
 
-            if let Some(v_virt_edge) = v_virt_edge {
-                dual_graph.graph.add_edge(0.into(), x2id, EdgeLabel::Structure);
+            if let Some(_v_virt_edge) = v_virt_edge {
+                // Not present in skeleton
+                dual_graph.graph.add_edge(NodeIndex::new(dual_graph.outer_face), x2id, EdgeLabel::Structure);
             } else {
-                println!("v:");
                 for (i, face) in dual_graph.faces.iter().enumerate() {
                     if face.vertices.contains(&node_to_expanded[&v].index()) {
-                        println!("{i}");
                         dual_graph.graph.add_edge(NodeIndex::new(i), x2id, EdgeLabel::Structure);
                     }
                 }
             }
 
-            println!("{:?}", node_to_expanded);
-            println!("{:?}", dual_graph.faces);
-
-
-            // TODO: get rid of dijkstra
+            // should be BFS but petgraph has dijkstra implemented ;)
             let costs = dijkstra(&dual_graph.graph, x1id, Option::from(x2id), |_| 1);
-            crossings += costs.get(&x2id).unwrap() - 2;
+            crossings += costs.get(&x2id).unwrap() - 2; // -2  because we added edges to connect to faces
         }
 
         crossings
@@ -353,13 +394,52 @@ mod tests {
         assert_eq!(reduced_path.len(), 0);
     }
 
-    #[test]
-    fn test_oeip() { // TODO: test exhaustively grid
-        let graph = generate_grid_graph(5, 5);
-        let points = get_arbitrary_embedding_of_grid(5, 5);
+    fn brute_grid_crossings(rows: usize, cols: usize, u: usize, v: usize) -> i32 {
+        if u == v {
+            return 0;
+        }
+        // get coordinates of u and v
+        let (x1, y1) = ((u / cols) as i32, (u % cols) as i32);
+        let (x2, y2) = ((v / cols) as i32, (v % cols) as i32);
 
-        let block_inserter = OptimalBlockInserter::new(&graph, points);
-        let crossings = block_inserter.oeip(0, 6);
-        assert_eq!(crossings, 0);
+        let d_vertical = (x1 as i32 - x2 as i32).abs();
+        let d_horizontal = (y1 as i32 - y2 as i32).abs();
+        let mut manhattan = d_vertical + d_horizontal;
+        if d_vertical > 0 {
+            manhattan -= 1;
+        }
+        if d_horizontal > 0 {
+            manhattan -= 1;
+        }
+        let min_exit_vertical_1 = std::cmp::min(x1, rows as i32 - x1 - 1);
+        let min_exit_horizontal_1 = std::cmp::min(y1, cols as i32 - y1 - 1);
+        let min_exit_vertical_2 = std::cmp::min(x2, rows as i32 - x2 - 1);
+        let min_exit_horizontal_2 = std::cmp::min(y2, cols as i32 - y2 - 1);
+        let crossings = manhattan;
+        crossings
+            .min(min_exit_horizontal_1 + min_exit_horizontal_2)
+            .min(min_exit_vertical_1 + min_exit_vertical_2)
+            .min(min_exit_horizontal_1 + min_exit_vertical_2)
+            .min(min_exit_horizontal_2 + min_exit_vertical_1)
+    }
+
+    #[cfg(all(test, not(debug_assertions)))]
+    #[test]
+    fn test_oeip() {
+        for r in 2..10 {
+            for c in 2..10 {
+                let graph = generate_grid_graph(r, c);
+                let points = get_arbitrary_embedding_of_grid(r, c);
+                let block_inserter = OptimalBlockInserter::new(&graph, points);
+
+                for u in 0..r * c {
+                    for v in u..r * c {
+                        let crossings = block_inserter.oeip(u, v);
+                        let brute_crossings = brute_grid_crossings(r, c, u, v);
+                        assert_eq!(crossings, brute_crossings, "Failed for grid {}x{} with u={} and v={}", r, c, u, v);
+                    }
+                }
+            }
+        }
     }
 }

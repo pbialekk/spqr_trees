@@ -9,7 +9,7 @@ use hashbrown::{HashMap};
 
 /// Counts the number of all combinatorial embeddings of a given graph in O(V + E).
 ///
-/// Combinatorial embedding is defined by clockwise (or anticlockwise) order of edges around each vertex.
+/// Combinatorial embedding is defined by clockwise (or counterclockwise) order of edges around each vertex.
 ///
 /// Based on (https://www.sciencedirect.com/science/article/pii/0012365X9390316L)
 ///
@@ -17,6 +17,11 @@ use hashbrown::{HashMap};
 /// - `block_emb` - number of combinatorial embeddings for each block in the block-cut tree
 /// - `deg_in_bc` - degree of the cut vertex in the block-cut tree
 /// - `edges_adj_v` - number of edges (from original graph) adjacent to the cut vertex (for each block)
+///
+/// # Idea:
+/// 1. Take into account embeddings of biconnected components.
+/// 2. Choose first edges around cut vertices for each block.
+/// 3. Account for permutations of all edges around cut vertices that do not contain interlacing.
 ///
 /// This algorithm can give you an idea how to go through all the embeddings and choose appropriate
 /// based on given conditions.
@@ -70,6 +75,7 @@ pub fn count_combinatorial_embeddings(graph: &UnGraph) -> usize {
         }
     }
     // this part accounts for permutation of edges of biconnected component around cut vertex
+    // but restricted to not contain interlacing (1 1 1 2 2 1 1 2 2 2 - numbers indicate component of edge)
     for i in 0..bc_tree.cut_count {
         for j in 1..deg_in_bc[i] - 1 {
             embeddings *= (deg_in_og[i] - j);
@@ -81,7 +87,7 @@ pub fn count_combinatorial_embeddings(graph: &UnGraph) -> usize {
 
 /// Counts the number of combinatorial embeddings in a biconnected graph using the SPQR tree.
 ///
-/// Combinatorial embedding is defined by clockwise (or anticlockwise) order of edges around each vertex.
+/// Combinatorial embedding is defined by clockwise (or counterclockwise) order of edges around each vertex.
 ///
 /// The idea is simple, we loop over all components of SPQR tree of given graph:
 /// - **S node (cycle)** - has only 1 embedding

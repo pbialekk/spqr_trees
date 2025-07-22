@@ -36,6 +36,8 @@ pub struct DualGraph {
     pub faces: Vec<Face>,
     /// Graph of faces
     pub graph: UnGraph,
+    /// Index of outer face
+    pub outer_face: usize,
 }
 
 /// Returns dual graph of given connected planar graph given locations of vertices.
@@ -48,6 +50,7 @@ pub struct DualGraph {
 pub fn get_dual_graph(points: &[Point], graph: &UnGraph) -> DualGraph {
     let n = points.len();
     assert!(graph.edge_count() > 0); // no edges => algorithm fails
+
     let mut adj: Vec<Vec<usize>> = vec![vec![]; n];
     for (i, e) in graph.edge_references().enumerate() {
         let (s, t) = (e.source().index(), e.target().index());
@@ -84,6 +87,7 @@ pub fn get_dual_graph(points: &[Point], graph: &UnGraph) -> DualGraph {
 
     let mut faces = Vec::new();
     let mut edges_in_dual = HashSet::new();
+    let mut outer_face = None;
 
     for i in 0..n {
         for j in 0..adj[i].len() {
@@ -96,6 +100,7 @@ pub fn get_dual_graph(points: &[Point], graph: &UnGraph) -> DualGraph {
                 used[v][e] = true;
 
                 // each edge is traversed twice, once from each side
+                // this fact is  used to build dual graph
                 if let Some(face_id) = edge_to_face[adj[v][e]] {
                     edges_in_dual.insert((face_id, faces.len()));
                 } else {
@@ -135,12 +140,9 @@ pub fn get_dual_graph(points: &[Point], graph: &UnGraph) -> DualGraph {
                 sum += p2.cross2(&p1, &p3) as i128;
             }
             if sum <= 0 {
-                faces.reverse();
-                faces.push(face);
-                faces.reverse();
-            } else {
-                faces.push(face);
+                outer_face = Some(faces.len());
             }
+            faces.push(face);
         }
     }
 
@@ -160,6 +162,7 @@ pub fn get_dual_graph(points: &[Point], graph: &UnGraph) -> DualGraph {
     let dual_graph = DualGraph {
         faces,
         graph,
+        outer_face: outer_face.unwrap(),
     };
 
     dual_graph
@@ -178,7 +181,7 @@ mod tests {
             for c in 0..cols-1 {
                 if r == 0 || r == rows - 2 || c == 0 || c == cols - 2 {
                     let node = NodeIndex::new(r * (cols - 1) + c);
-                    dual_graph.add_edge(node, outer, EdgeLabel::Structure);
+                    dual_graph.add_edge(node, outer, EdgeLabel::Real);
                 }
             }
         }
@@ -265,7 +268,6 @@ mod tests {
             Point::new(1, -1), Point::new(0, -1)
         ];
 
-        let points = get_arbitrary_embedding_of_grid(5, 5);
         let dual_graph = get_dual_graph(&points, &graph);
         println!("{:?}", dual_graph.faces);
     }

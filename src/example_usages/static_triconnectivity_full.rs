@@ -22,7 +22,7 @@ pub struct StaticTriconnectivity {
     triconnectivity_blocks: Vec<StaticBiconnectedTriconnectivity>, // for each block in the bct we store it's corresponding triconnectivity query structure
     vertex_numbers_mapping: Vec<HashMap<usize, usize>>, // vertices inside the spqr trees are numbered from 0 to m-1, so here
     // we map the original vertex numbers to the new ones
-    parent: Vec<Option<usize>>, // for each vertex in the bct we store it's parent
+    parent: Vec<Option<usize>>, // for each vertex in the bct we store its parent
 }
 
 impl StaticTriconnectivity {
