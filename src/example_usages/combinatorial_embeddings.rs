@@ -312,8 +312,8 @@ mod tests {
             }
             embeddings
         }
-        for n in 1..1000 {
-            let graph = crate::testing::random_graphs::random_tree(7, 42);
+        for i in 1..50 {
+            let graph = crate::testing::random_graphs::random_tree(i, 42);
             let embeddings = count_combinatorial_embeddings(&graph);
             let brute = brute_embeddings_tree(&graph);
             assert_eq!(embeddings, brute);

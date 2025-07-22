@@ -704,7 +704,7 @@ mod bc_tests {
     fn is_connected(graph: &UnGraph) -> bool {
         let mut dfs = Dfs::new(graph, NodeIndex::new(0));
         let mut visited = 0;
-        while let Some(node) = dfs.next(graph) {
+        while let Some(_node) = dfs.next(graph) {
             visited += 1;
         }
         visited == graph.node_count()
