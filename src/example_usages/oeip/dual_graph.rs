@@ -237,4 +237,36 @@ mod tests {
             }
         }
     }
+
+    #[test]
+    fn test_concave() {
+        let mut graph = UnGraph::new_undirected();
+        let a = graph.add_node(0);
+        let b = graph.add_node(1);
+        let c = graph.add_node(2);
+        let d = graph.add_node(3);
+        let e = graph.add_node(4);
+        let f = graph.add_node(5);
+        let g = graph.add_node(6);
+        let h = graph.add_node(7);
+
+        graph.add_edge(a, b, EdgeLabel::Real);
+        graph.add_edge(b, c, EdgeLabel::Real);
+        graph.add_edge(c, d, EdgeLabel::Real);
+        graph.add_edge(d, e, EdgeLabel::Real);
+        graph.add_edge(e, f, EdgeLabel::Real);
+        graph.add_edge(f, g, EdgeLabel::Real);
+        graph.add_edge(g, h, EdgeLabel::Real);
+        graph.add_edge(h, a, EdgeLabel::Real);
+
+        let points = vec![
+            Point::new(0, 0), Point::new(1, 0), Point::new(2, 0),
+            Point::new(2, -1), Point::new(2, -2), Point::new(1, -2),
+            Point::new(1, -1), Point::new(0, -1)
+        ];
+
+        let points = get_arbitrary_embedding_of_grid(5, 5);
+        let dual_graph = get_dual_graph(&points, &graph);
+        println!("{:?}", dual_graph.faces);
+    }
 }

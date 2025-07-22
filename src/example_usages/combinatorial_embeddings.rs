@@ -7,7 +7,7 @@ use crate::{
 };
 use hashbrown::{HashMap};
 
-/// Counts the number of all combinatorial planar embeddings of a given planar graph in O(V + E).
+/// Counts the number of all combinatorial embeddings of a given graph in O(V + E).
 ///
 /// Combinatorial embedding is defined by clockwise (or anticlockwise) order of edges around each vertex.
 ///
@@ -79,7 +79,7 @@ pub fn count_combinatorial_embeddings(graph: &UnGraph) -> usize {
     embeddings
 }
 
-/// Counts the number of combinatorial planar embeddings in a biconnected planar graph using the SPQR tree.
+/// Counts the number of combinatorial embeddings in a biconnected graph using the SPQR tree.
 ///
 /// Combinatorial embedding is defined by clockwise (or anticlockwise) order of edges around each vertex.
 ///

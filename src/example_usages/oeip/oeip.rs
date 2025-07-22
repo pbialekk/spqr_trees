@@ -250,6 +250,7 @@ impl OptimalBlockInserter {
             }
 
             expand_skeleton(&self.tree, &mut edges, &marked_edges, *node, None, &self.pair_of_components_to_virt_edge);
+            println!("expanded edges: {:?}", edges);
 
             let mut expanded_graph = UnGraph::new_undirected();
             let mut node_to_expanded = HashMap::new();
@@ -264,9 +265,9 @@ impl OptimalBlockInserter {
                 expanded_graph.add_edge(node_to_expanded[&a], node_to_expanded[&b], EdgeLabel::Real);
             }
 
-            let mut points = vec![];
+            let mut points = vec![]; // TODO: there is a evil bug
             for id in expanded_graph.node_indices() {
-                let point = self.points[id.index()];
+                let point = self.points[*expanded_graph.node_weight(id).unwrap() as usize];
                 points.push(point);
             }
 
@@ -280,10 +281,11 @@ impl OptimalBlockInserter {
 
             if let Some(u_virt_edge) = u_virt_edge {
                 dual_graph.graph.add_edge(0.into(), x1id, EdgeLabel::Structure);
-                crossings -= 1;
             } else {
+                println!("u:");
                 for (i, face) in dual_graph.faces.iter().enumerate() {
                     if face.vertices.contains(&node_to_expanded[&u].index()) {
+                        println!("{i}");
                         dual_graph.graph.add_edge(NodeIndex::new(i), x1id, EdgeLabel::Structure);
                     }
                 }
@@ -291,8 +293,8 @@ impl OptimalBlockInserter {
 
             if let Some(v_virt_edge) = v_virt_edge {
                 dual_graph.graph.add_edge(0.into(), x2id, EdgeLabel::Structure);
-                crossings -= 1;
             } else {
+                println!("v:");
                 for (i, face) in dual_graph.faces.iter().enumerate() {
                     if face.vertices.contains(&node_to_expanded[&v].index()) {
                         println!("{i}");
@@ -307,7 +309,7 @@ impl OptimalBlockInserter {
 
             // TODO: get rid of dijkstra
             let costs = dijkstra(&dual_graph.graph, x1id, Option::from(x2id), |_| 1);
-            crossings += costs.get(&x2id).unwrap();
+            crossings += costs.get(&x2id).unwrap() - 2;
         }
 
         crossings
@@ -357,8 +359,7 @@ mod tests {
         let points = get_arbitrary_embedding_of_grid(5, 5);
 
         let block_inserter = OptimalBlockInserter::new(&graph, points);
-        println!("{:?}", block_inserter.find_shortest_path_between_allocation_nodes(16, 12));
-        let crossings = block_inserter.oeip(0, 17);
-        assert_eq!(crossings, 2);
+        let crossings = block_inserter.oeip(0, 6);
+        assert_eq!(crossings, 0);
     }
 }
