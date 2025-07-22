@@ -21,6 +21,9 @@ pub mod spqr_blocks;
 pub mod spqr_tree;
 pub(crate) mod testing;
 
+pub mod embedding;
+pub(crate) mod embedding_blocks;
+
 pub mod example_usages;
 
 pub mod types;

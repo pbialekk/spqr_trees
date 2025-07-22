@@ -18,6 +18,7 @@ impl std::fmt::Display for EdgeLabel {
 
 /// Wrapper for petgraph's graph type.
 pub type UnGraph = petgraph::graph::UnGraph<u32, EdgeLabel>;
+pub type DiGraph = petgraph::graph::DiGraph<u32, EdgeLabel>;
 
 /// Enum to mark edges in DFS tree.
 #[derive(Clone, PartialEq, Eq, Debug)]
