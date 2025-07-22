@@ -77,10 +77,15 @@ mod tests {
     }
 
     fn run_test(graph: &UnGraph, output: &mut String) {
+        let n = graph.node_count();
+        let m = graph.edge_count();
+        output.push_str(&format!("{} {}\n", n, m));
+
         let mut edges = String::new();
         for e in graph.edge_references() {
             edges.push_str(&format!("{},{}\n", e.source().index(), e.target().index()));
         }
+
         output.push_str(&edges);
 
         let (is_planar, counterexample) = is_planar(&graph, true);
