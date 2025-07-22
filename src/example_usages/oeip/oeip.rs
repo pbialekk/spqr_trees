@@ -194,7 +194,7 @@ impl OptimalBlockInserter {
     /// Returns the optimal number of crossings when inserting edge (u, v) into graph.
     ///
     /// Prerequisite: input graph is biconnected
-    pub fn oeip(&self, u: usize, v: usize) -> i32 {
+    pub fn oeip(&self, u: usize, v: usize) -> i64 {
         if u == v {
             return 0;
         }
@@ -210,18 +210,21 @@ impl OptimalBlockInserter {
         let mut crossings = 0;
 
         // Updates list of edges of expanded skeleton graph.
-        fn expand_skeleton(tree: &SPQRTree, edges: &mut Vec<usize>, marked_edges: &Vec<bool>, u: usize, parent: Option<usize>) {
+        fn expand_skeleton(tree: &SPQRTree, edges: &mut Vec<usize>, marked_edges: &Vec<bool>, u: usize, parent: Option<usize>, pair_of_components_to_virt_edge: &HashMap<(usize, usize), usize>) {
             for &eid in tree.triconnected_components.components[u].edges.iter() {
                 if !marked_edges[eid] && tree.triconnected_components.is_real_edge[eid] {
                     edges.push(eid);
                 }
             }
 
+
             for &to in tree.adj[u].iter() {
                 if Some(to) == parent {
                     continue;
                 }
-                expand_skeleton(tree, edges, marked_edges, to, Some(u));
+                if !marked_edges[pair_of_components_to_virt_edge[&(u, to)]] {
+                    expand_skeleton(tree, edges, marked_edges, to, Some(u), pair_of_components_to_virt_edge);
+                }
             }
         }
 
@@ -246,7 +249,7 @@ impl OptimalBlockInserter {
                 marked_edges[v_virt_edge.unwrap()] = true;
             }
 
-            expand_skeleton(&self.tree, &mut edges, &marked_edges, *node, None);
+            expand_skeleton(&self.tree, &mut edges, &marked_edges, *node, None, &self.pair_of_components_to_virt_edge);
 
             let mut expanded_graph = UnGraph::new_undirected();
             let mut node_to_expanded = HashMap::new();
@@ -277,6 +280,7 @@ impl OptimalBlockInserter {
 
             if let Some(u_virt_edge) = u_virt_edge {
                 dual_graph.graph.add_edge(0.into(), x1id, EdgeLabel::Structure);
+                crossings -= 1;
             } else {
                 for (i, face) in dual_graph.faces.iter().enumerate() {
                     if face.vertices.contains(&node_to_expanded[&u].index()) {
@@ -287,6 +291,7 @@ impl OptimalBlockInserter {
 
             if let Some(v_virt_edge) = v_virt_edge {
                 dual_graph.graph.add_edge(0.into(), x2id, EdgeLabel::Structure);
+                crossings -= 1;
             } else {
                 for (i, face) in dual_graph.faces.iter().enumerate() {
                     if face.vertices.contains(&node_to_expanded[&v].index()) {
@@ -296,12 +301,13 @@ impl OptimalBlockInserter {
                 }
             }
 
-            println!("dual graph: {:?}", dual_graph.graph);
+            println!("{:?}", node_to_expanded);
+            println!("{:?}", dual_graph.faces);
+
 
             // TODO: get rid of dijkstra
             let costs = dijkstra(&dual_graph.graph, x1id, Option::from(x2id), |_| 1);
-            crossings += costs.get(&x2id).unwrap() - 2;
-            println!("crossings: {}", crossings);
+            crossings += costs.get(&x2id).unwrap();
         }
 
         crossings
@@ -339,7 +345,6 @@ mod tests {
         graph.add_edge(3.into(), 7.into(), EdgeLabel::Real);
 
         let block_inserter = OptimalBlockInserter::new(&graph, vec![]); // do not care about points in this test
-        println!("{:?}", block_inserter.pair_of_components_to_virt_edge);
         let path = block_inserter.find_shortest_path_between_allocation_nodes(0, 7);
         assert_eq!(path.len(), 3);
         let reduced_path = block_inserter.delete_sp_nodes_from_path(&path);
@@ -348,11 +353,12 @@ mod tests {
 
     #[test]
     fn test_oeip() { // TODO: test exhaustively grid
-        let graph = generate_grid_graph(3, 3);
-        let points = get_arbitrary_embedding_of_grid(3, 3);
+        let graph = generate_grid_graph(5, 5);
+        let points = get_arbitrary_embedding_of_grid(5, 5);
 
         let block_inserter = OptimalBlockInserter::new(&graph, points);
-        let crossings = block_inserter.oeip(0, 7);
-        assert_eq!(crossings, 0); // no crossings expected
+        println!("{:?}", block_inserter.find_shortest_path_between_allocation_nodes(16, 12));
+        let crossings = block_inserter.oeip(0, 17);
+        assert_eq!(crossings, 2);
     }
 }
