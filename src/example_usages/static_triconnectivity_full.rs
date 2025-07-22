@@ -22,7 +22,7 @@ pub struct StaticTriconnectivity {
     triconnectivity_blocks: Vec<StaticBiconnectedTriconnectivity>, // for each block in the bct we store it's corresponding triconnectivity query structure
     vertex_numbers_mapping: Vec<HashMap<usize, usize>>, // vertices inside the spqr trees are numbered from 0 to m-1, so here
     // we map the original vertex numbers to the new ones
-    parent: Vec<Option<usize>>, // for each vertex in the bct we store it's parent
+    parent: Vec<Option<usize>>, // for each vertex in the bct we store its parent
 }
 
 impl StaticTriconnectivity {
@@ -104,7 +104,7 @@ impl StaticTriconnectivity {
 mod tests {
     use petgraph::visit::{EdgeRef, IntoNodeReferences};
 
-    use crate::testing::random_graphs::random_graph;
+    use crate::testing::random_graphs::random_connected_graph;
 
     use super::*;
 
@@ -168,7 +168,7 @@ mod tests {
             let n = 2 + i / 10;
             let m: usize = 1 + i;
 
-            let in_graph = random_graph(n, m, i);
+            let in_graph = random_connected_graph(n, m, i);
 
             let fast_triconnectivity: StaticTriconnectivity = StaticTriconnectivity::new(&in_graph);
             let slow_triconnectivity = StaticTriconnectivityBrute::new(&in_graph);
@@ -236,7 +236,7 @@ mod tests {
             let n = 2 + i / 10;
             let m: usize = 1 + i;
 
-            let in_graph = random_graph(n, m, i);
+            let in_graph = random_connected_graph(n, m, i);
 
             let fast_triconnectivity: StaticTriconnectivity = StaticTriconnectivity::new(&in_graph);
             let slow_triconnectivity = StaticTriconnectivityBrute::new(&in_graph);

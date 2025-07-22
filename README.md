@@ -6,5 +6,9 @@ Based on [`petgraph`](https://docs.rs/petgraph).
 
 ## Documentation
 
-For a documentation please see `examples/` and  
+For a documentation please see `examples/`, `src/example_usages`, `tests` and mainly  
 `cargo doc --open`.
+
+---
+
+This library was created as final year project at TCS @ Jegiellonian University.
