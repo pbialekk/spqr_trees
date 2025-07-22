@@ -1,2 +1,2 @@
 pub(crate) mod graph_enumerator;
-pub mod random_graphs;
+pub(crate) mod random_graphs;

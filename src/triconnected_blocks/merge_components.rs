@@ -4,7 +4,7 @@ use crate::triconnected_blocks::outside_structures::{Component, ComponentType};
 ///
 /// Two components can be merged if and only if they are of the same type (excluding `R` nodes)
 /// and share a common virtual edge.
-pub(crate) fn merge_components(m: usize, split_components: &mut Vec<Component>) {
+pub fn merge_components(m: usize, split_components: &mut Vec<Component>) {
     let mut edge_to_component = vec![0; m];
 
     for (i, component) in split_components.iter().enumerate() {

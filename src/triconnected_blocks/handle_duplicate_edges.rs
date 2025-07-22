@@ -7,10 +7,7 @@ use crate::triconnected_blocks::{
 ///
 /// This function modifies the graph in place by removing self-loops and merging duplicate edges,
 /// creating a `P` component for each set of duplicates. The adjacency list is updated accordingly.
-pub(crate) fn handle_duplicate_edges(
-    graph: &mut GraphInternal,
-    split_components: &mut Vec<Component>,
-) {
+pub fn handle_duplicate_edges(graph: &mut GraphInternal, split_components: &mut Vec<Component>) {
     // stable sort by second
     let mut cnt = vec![0; graph.n];
 

@@ -14,12 +14,14 @@ use crate::{
 /// ## Reference:
 /// - [On-line maintenance of triconnected components with SPQR-trees](https://link.springer.com/article/10.1007/BF01961541)
 
+#[allow(dead_code)]
 pub struct StaticBiconnectedTriconnectivity {
     tree: RootedSPQRTree,
 
     s_links: Vec<HashMap<usize, (Option<usize>, Option<usize>)>>,
 }
 
+#[allow(dead_code)]
 impl StaticBiconnectedTriconnectivity {
     pub fn new(graph: &UnGraph) -> Self {
         let tree = get_rooted_spqr_tree(&graph);

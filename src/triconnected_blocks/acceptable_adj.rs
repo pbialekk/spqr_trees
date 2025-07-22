@@ -12,7 +12,7 @@ use crate::triconnected_blocks::{graph_internal::GraphInternal, outside_structur
 /// - For a non-tree edge: `phi(e) = 3 * num[to] + 1`
 ///
 /// Edges are then bucket-sorted by their phi values and adjacency lists are rebuilt.
-pub(crate) fn make_adjacency_lists_acceptable(graph: &mut GraphInternal) {
+pub fn make_adjacency_lists_acceptable(graph: &mut GraphInternal) {
     let phi = |eid: usize| -> usize {
         let (u, to) = graph.edges[eid];
         if graph.edge_type[eid] == Some(EdgeType::Tree) {

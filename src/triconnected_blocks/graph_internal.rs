@@ -5,7 +5,7 @@ use petgraph::visit::EdgeRef;
 use crate::{UnGraph, triconnected_blocks::outside_structures::EdgeType};
 
 #[derive(Debug, Clone)]
-pub(crate) struct GraphInternal {
+pub struct GraphInternal {
     pub n: usize,                         // number of vertices
     pub m: usize,                         // number of edges
     pub adj: Vec<Vec<usize>>,             // adjacency list, edges are stored as indices in `edges`

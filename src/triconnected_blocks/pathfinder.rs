@@ -45,7 +45,7 @@ fn dfs(
 ///
 /// ## Reference
 /// - [Hopcroft, J., & Tarjan, R. (1973). Dividing a Graph into Triconnected Components. SIAM Journal on Computing, 2(3), 135–158.](https://epubs.siam.org/doi/10.1137/0202012)
-pub(crate) fn run_pathfinder(root: usize, graph: &mut GraphInternal) {
+pub fn run_pathfinder(root: usize, graph: &mut GraphInternal) {
     let mut newnum = vec![0; graph.n];
     let mut time = graph.n - 1;
     dfs(root, root, graph, &mut newnum, &mut time);

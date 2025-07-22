@@ -61,7 +61,7 @@ fn dfs(u: usize, time: &mut usize, graph: &mut GraphInternal) {
 /// Additionally, it classifies each edge as either a `Tree` edge or a `Back` edge,
 /// updating the `edge_type` field in the graph accordingly. After the DFS,
 /// all edges in `graph.edges` are oriented from source to target.
-pub(crate) fn run_palm_dfs(graph: &mut GraphInternal, root: usize) {
+pub fn run_palm_dfs(graph: &mut GraphInternal, root: usize) {
     let mut time = 0;
     dfs(root, &mut time, graph);
 
