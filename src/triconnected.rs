@@ -387,17 +387,17 @@ pub fn get_triconnected_components(in_graph: &UnGraph) -> TriconnectedComponents
 
         if m >= 3 {
             return TriconnectedComponents {
-                components: vec![c],
+                comp: vec![c],
                 edges,
-                is_real_edge: vec![true; m],
-                real_to_split: vec![Some(0); m],
+                is_real: vec![true; m],
+                to_split: vec![Some(0); m],
             };
         } else {
             return TriconnectedComponents {
-                components: vec![],
+                comp: vec![],
                 edges,
-                is_real_edge: vec![true; m],
-                real_to_split: vec![Some(0); m],
+                is_real: vec![true; m],
+                to_split: vec![Some(0); m],
             };
         }
     }
@@ -509,10 +509,10 @@ pub fn get_triconnected_components(in_graph: &UnGraph) -> TriconnectedComponents
     }
 
     TriconnectedComponents {
-        components: split_components,
+        comp: split_components,
         edges: new_edges,
-        is_real_edge: new_is_real_edge,
-        real_to_split: new_real_to_split_component,
+        is_real: new_is_real_edge,
+        to_split: new_real_to_split_component,
     }
 }
 
@@ -592,7 +592,7 @@ mod tests {
         let mut res = vec![vec![false; n]; n];
 
         for c in split_components {
-            if c.component_type == ComponentType::S {
+            if c.comp_type == ComponentType::S {
                 // not triconnected
                 continue;
             }
@@ -663,7 +663,7 @@ mod tests {
                 edges_occs[eid] += 1;
             }
 
-            if c.component_type == ComponentType::P {
+            if c.comp_type == ComponentType::P {
                 let mut nodes = vec![];
                 for &eid in &c.edges {
                     let (s, t) = edges[eid];
@@ -674,7 +674,7 @@ mod tests {
                 nodes.dedup();
 
                 assert!(nodes.len() == 2);
-            } else if c.component_type == ComponentType::S {
+            } else if c.comp_type == ComponentType::S {
                 let mut nodes = vec![];
                 for &eid in &c.edges {
                     let (s, t) = edges[eid];
@@ -695,7 +695,7 @@ mod tests {
                 }
 
                 assert!(deg.iter().all(|&d| d == 0 || d == 2));
-            } else if c.component_type == ComponentType::R {
+            } else if c.comp_type == ComponentType::R {
                 let mut nodes = vec![];
                 for &eid in &c.edges {
                     let (s, t) = edges[eid];
@@ -755,13 +755,13 @@ mod tests {
             let in_graph = random_biconnected_graph(n, m, i);
 
             let tricon = get_triconnected_components(&in_graph);
-            verify_components(&in_graph, &tricon.components, &tricon.edges);
+            verify_components(&in_graph, &tricon.comp, &tricon.edges);
 
             let n = in_graph.node_references().count();
             let m = in_graph.edge_references().count();
 
             let brute_mat = are_triconnected_brute(&in_graph);
-            let fast_mat = answer_fast(n, m, &tricon.components, &tricon.edges);
+            let fast_mat = answer_fast(n, m, &tricon.comp, &tricon.edges);
 
             assert_eq!(brute_mat, fast_mat);
         }

@@ -1,11 +1,14 @@
-use hashbrown::{HashSet, HashMap};
+use hashbrown::{HashMap, HashSet};
+use petgraph::algo::dijkstra;
 use petgraph::graph::NodeIndex;
 use petgraph::visit::IntoNodeReferences;
-use petgraph::algo::dijkstra;
 
-use crate::{UnGraph, spqr_blocks::outside_structures::SPQRTree, spqr_tree::get_spqr_tree, triconnected_blocks::outside_structures::ComponentType, EdgeLabel};
 use crate::example_usages::oeip::dual_graph::get_dual_graph;
 use crate::testing::grids::Point;
+use crate::{
+    EdgeLabel, UnGraph, spqr_blocks::outside_structures::SPQRTree, spqr_tree::get_spqr_tree,
+    triconnected_blocks::outside_structures::ComponentType,
+};
 
 /// Solves the Optimal Edge Insertion Problem (OEIP) for a given biconnected planar graph.
 ///
@@ -66,8 +69,8 @@ pub struct OptimalBlockInserter {
 impl OptimalBlockInserter {
     pub fn new(graph: &UnGraph, points: Vec<Point>) -> Self {
         let tree = get_spqr_tree(&graph);
-        let mut component_vertex_set = vec![HashSet::new(); tree.triconnected_components.components.len()];
-        let mut first_allocation_node= vec![None; graph.node_references().count()];
+        let mut component_vertex_set = vec![HashSet::new(); tree.blocks.comp.len()];
+        let mut first_allocation_node = vec![None; graph.node_references().count()];
         let mut pair_of_components_to_virt_edge = HashMap::new();
 
         // We have traverse the SPQR tree to populate the allocation nodes.
@@ -79,9 +82,8 @@ impl OptimalBlockInserter {
             u: usize,
             parent: Option<usize>,
         ) {
-            for &eid in tree.triconnected_components.components[u].edges.iter() {
-
-                let (a, b) = tree.triconnected_components.edges[eid];
+            for &eid in tree.blocks.comp[u].edges.iter() {
+                let (a, b) = tree.blocks.edges[eid];
 
                 for turn in [a, b] {
                     if first_allocation_node[turn].is_none() {
@@ -107,10 +109,10 @@ impl OptimalBlockInserter {
 
         fn populate_virt_edge_info(
             tree: &SPQRTree,
-            pair_of_components_to_virt_edge: &mut HashMap<(usize, usize), usize>
+            pair_of_components_to_virt_edge: &mut HashMap<(usize, usize), usize>,
         ) {
             let mut virt_edges = HashMap::new();
-            for (i, component) in tree.triconnected_components.components.iter().enumerate() {
+            for (i, component) in tree.blocks.comp.iter().enumerate() {
                 for &eid in component.edges.iter() {
                     if virt_edges.contains_key(&eid) {
                         // add both pairs just for convenience
@@ -123,7 +125,7 @@ impl OptimalBlockInserter {
             }
         }
 
-        if tree.triconnected_components.components.len() > 0 {
+        if tree.blocks.comp.len() > 0 {
             populate_allocation_info(
                 &tree,
                 &mut first_allocation_node,
@@ -138,7 +140,10 @@ impl OptimalBlockInserter {
                 graph: graph.clone(),
                 points,
                 tree,
-                first_allocation_node: first_allocation_node.into_iter().map(|x| x.unwrap()).collect(),
+                first_allocation_node: first_allocation_node
+                    .into_iter()
+                    .map(|x| x.unwrap())
+                    .collect(),
                 component_vertex_set,
                 pair_of_components_to_virt_edge,
             }
@@ -157,11 +162,7 @@ impl OptimalBlockInserter {
     /// Finds arbitrary path between two allocation nodes in the SPQR tree.
     ///
     /// Path is unique, because we are dealing with a tree, but we can choose multiple allocation nodes pairs.
-    fn find_arbitrary_path_between_allocation_nodes(
-        &self,
-        u: usize,
-        v: usize,
-    ) -> Vec<usize> {
+    fn find_arbitrary_path_between_allocation_nodes(&self, u: usize, v: usize) -> Vec<usize> {
         let mut path = vec![];
         let start = self.first_allocation_node[u];
         let end = self.first_allocation_node[v];
@@ -195,11 +196,7 @@ impl OptimalBlockInserter {
     }
 
     /// Deletes unnecessary nodes from the path between two allocation nodes.
-    fn find_shortest_path_between_allocation_nodes(
-        &self,
-        u: usize,
-        v: usize,
-    ) -> Vec<usize> {
+    fn find_shortest_path_between_allocation_nodes(&self, u: usize, v: usize) -> Vec<usize> {
         let mut path = self.find_arbitrary_path_between_allocation_nodes(u, v);
         path.reverse();
         while path.len() > 1 {
@@ -224,16 +221,12 @@ impl OptimalBlockInserter {
     /// Deletes S and P nodes from the path between two allocation nodes.
     ///
     /// They are not relevant.
-    fn delete_sp_nodes_from_path(
-        &self,
-        path: &Vec<usize>,
-    ) -> Vec<usize> {
+    fn delete_sp_nodes_from_path(&self, path: &Vec<usize>) -> Vec<usize> {
         let mut reduced_path = vec![];
         for &node in path.iter() {
-            if self.tree.triconnected_components.components[node].component_type == ComponentType::R {
+            if self.tree.blocks.comp[node].comp_type == ComponentType::R {
                 reduced_path.push(node);
             }
-
         }
         reduced_path
     }
@@ -243,7 +236,11 @@ impl OptimalBlockInserter {
         if u == v {
             return 0;
         }
-        if self.graph.find_edge(NodeIndex::new(u), NodeIndex::new(v)).is_some() {
+        if self
+            .graph
+            .find_edge(NodeIndex::new(u), NodeIndex::new(v))
+            .is_some()
+        {
             return 0;
         }
 
@@ -255,13 +252,19 @@ impl OptimalBlockInserter {
         let mut crossings = 0;
 
         // Updates list of edges of expanded skeleton graph.
-        fn expand_skeleton(tree: &SPQRTree, edges: &mut Vec<usize>, marked_edges: &Vec<bool>, u: usize, parent: Option<usize>, pair_of_components_to_virt_edge: &HashMap<(usize, usize), usize>) {
-            for &eid in tree.triconnected_components.components[u].edges.iter() {
-                if !marked_edges[eid] && tree.triconnected_components.is_real_edge[eid] {
+        fn expand_skeleton(
+            tree: &SPQRTree,
+            edges: &mut Vec<usize>,
+            marked_edges: &Vec<bool>,
+            u: usize,
+            parent: Option<usize>,
+            pair_of_components_to_virt_edge: &HashMap<(usize, usize), usize>,
+        ) {
+            for &eid in tree.blocks.comp[u].edges.iter() {
+                if !marked_edges[eid] && tree.blocks.is_real[eid] {
                     edges.push(eid);
                 }
             }
-
 
             for &to in tree.adj[u].iter() {
                 if Some(to) == parent {
@@ -269,20 +272,27 @@ impl OptimalBlockInserter {
                 }
                 // We don't want to expand marked virtual edges
                 if !marked_edges[pair_of_components_to_virt_edge[&(u, to)]] {
-                    expand_skeleton(tree, edges, marked_edges, to, Some(u), pair_of_components_to_virt_edge);
+                    expand_skeleton(
+                        tree,
+                        edges,
+                        marked_edges,
+                        to,
+                        Some(u),
+                        pair_of_components_to_virt_edge,
+                    );
                 }
             }
         }
 
         // Iterate through path
         for (i, node) in path.iter().enumerate() {
-            if self.tree.triconnected_components.components[*node].component_type != ComponentType::R {
+            if self.tree.blocks.comp[*node].comp_type != ComponentType::R {
                 continue; // if deleted there were problems with prev and next
             }
             let mut edges = vec![];
             let mut u_virt_edge = None;
             let mut v_virt_edge = None;
-            let mut marked_edges = vec![false; self.tree.triconnected_components.edges.len()];
+            let mut marked_edges = vec![false; self.tree.blocks.edges.len()];
 
             if !self.component_vertex_set[*node].contains(&u) {
                 let prev_node = path[i - 1];
@@ -296,20 +306,31 @@ impl OptimalBlockInserter {
                 marked_edges[v_virt_edge.unwrap()] = true;
             }
 
-            expand_skeleton(&self.tree, &mut edges, &marked_edges, *node, None, &self.pair_of_components_to_virt_edge);
+            expand_skeleton(
+                &self.tree,
+                &mut edges,
+                &marked_edges,
+                *node,
+                None,
+                &self.pair_of_components_to_virt_edge,
+            );
 
             let mut expanded_graph = UnGraph::new_undirected();
             let mut node_to_expanded = HashMap::new();
             // Construct expanded graph
             for &eid in edges.iter() {
-                let (a, b) = self.tree.triconnected_components.edges[eid];
+                let (a, b) = self.tree.blocks.edges[eid];
                 for turn in [a, b] {
                     if !node_to_expanded.contains_key(&turn) {
                         let new_node = expanded_graph.add_node(turn as u32);
                         node_to_expanded.insert(turn, new_node);
                     }
                 }
-                expanded_graph.add_edge(node_to_expanded[&a], node_to_expanded[&b], EdgeLabel::Real);
+                expanded_graph.add_edge(
+                    node_to_expanded[&a],
+                    node_to_expanded[&b],
+                    EdgeLabel::Real,
+                );
             }
 
             let mut points = vec![];
@@ -328,22 +349,34 @@ impl OptimalBlockInserter {
 
             if let Some(_u_virt_edge) = u_virt_edge {
                 // Not present in skeleton
-                dual_graph.graph.add_edge(NodeIndex::new(dual_graph.outer_face), x1id, EdgeLabel::Structure);
+                dual_graph.graph.add_edge(
+                    NodeIndex::new(dual_graph.outer_face),
+                    x1id,
+                    EdgeLabel::Structure,
+                );
             } else {
                 for (i, face) in dual_graph.faces.iter().enumerate() {
                     if face.vertices.contains(&node_to_expanded[&u].index()) {
-                        dual_graph.graph.add_edge(NodeIndex::new(i), x1id, EdgeLabel::Structure);
+                        dual_graph
+                            .graph
+                            .add_edge(NodeIndex::new(i), x1id, EdgeLabel::Structure);
                     }
                 }
             }
 
             if let Some(_v_virt_edge) = v_virt_edge {
                 // Not present in skeleton
-                dual_graph.graph.add_edge(NodeIndex::new(dual_graph.outer_face), x2id, EdgeLabel::Structure);
+                dual_graph.graph.add_edge(
+                    NodeIndex::new(dual_graph.outer_face),
+                    x2id,
+                    EdgeLabel::Structure,
+                );
             } else {
                 for (i, face) in dual_graph.faces.iter().enumerate() {
                     if face.vertices.contains(&node_to_expanded[&v].index()) {
-                        dual_graph.graph.add_edge(NodeIndex::new(i), x2id, EdgeLabel::Structure);
+                        dual_graph
+                            .graph
+                            .add_edge(NodeIndex::new(i), x2id, EdgeLabel::Structure);
                     }
                 }
             }
@@ -355,14 +388,13 @@ impl OptimalBlockInserter {
 
         crossings
     }
-
 }
 
 mod tests {
     #![allow(unused_imports)]
+    use super::*;
     use crate::EdgeLabel;
     use crate::testing::grids::{generate_grid_graph, get_arbitrary_embedding_of_grid};
-    use super::*;
 
     #[test]
     fn test_find_shortest_path_between_allocation_nodes() {
@@ -438,7 +470,11 @@ mod tests {
                     for v in 0..r * c {
                         let crossings = block_inserter.oeip(u, v);
                         let brute_crossings = brute_grid_crossings(r, c, u, v);
-                        assert_eq!(crossings, brute_crossings, "Failed for grid {}x{} with u={} and v={}", r, c, u, v);
+                        assert_eq!(
+                            crossings, brute_crossings,
+                            "Failed for grid {}x{} with u={} and v={}",
+                            r, c, u, v
+                        );
                     }
                 }
             }

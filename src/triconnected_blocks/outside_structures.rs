@@ -39,14 +39,14 @@ impl std::fmt::Display for ComponentType {
 #[derive(Debug, Clone)]
 pub struct Component {
     pub edges: Vec<usize>,
-    pub component_type: ComponentType,
+    pub comp_type: ComponentType,
 }
 
 impl Component {
-    pub fn new(component_type: ComponentType) -> Self {
+    pub fn new(comp_type: ComponentType) -> Self {
         Self {
             edges: Vec::new(),
-            component_type,
+            comp_type: comp_type,
         }
     }
 
@@ -65,8 +65,8 @@ impl Component {
     }
 
     pub fn commit(&mut self, split_components: &mut Vec<Component>) {
-        if self.component_type == ComponentType::UNSURE {
-            self.component_type = if self.edges.len() >= 4 {
+        if self.comp_type == ComponentType::UNSURE {
+            self.comp_type = if self.edges.len() >= 4 {
                 ComponentType::R
             } else {
                 ComponentType::S
@@ -81,14 +81,14 @@ impl Component {
 ///
 /// Contains a list of components, edges, and additional metadata about the edges.
 ///
-/// - `components`: List of components in the triconnected decomposition.
+/// - `comp`: List of components in the triconnected decomposition.
 /// - `edges`: List of edges in the graph. Also contains the virtual edges created during the splitting process.
-/// - `is_real_edge`: Indicates if an edge is a real edge in the original graph.
-/// - `real_to_split`: Maps edges to their corresponding split components. Virtual edges are mapped to `None`.
+/// - `is_real`: Indicates if an edge is a real edge in the original graph.
+/// - `to_split`: Maps edges to their corresponding split components. Virtual edges are mapped to `None`.
 #[derive(Debug, Clone)]
 pub struct TriconnectedComponents {
-    pub components: Vec<Component>,
+    pub comp: Vec<Component>,
     pub edges: Vec<(usize, usize)>,
-    pub is_real_edge: Vec<bool>,
-    pub real_to_split: Vec<Option<usize>>,
+    pub is_real: Vec<bool>,
+    pub to_split: Vec<Option<usize>>,
 }

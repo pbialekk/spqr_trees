@@ -21,13 +21,13 @@ pub fn get_spqr_tree(graph: &UnGraph) -> SPQRTree {
 
     // now we just add edges between components
     let mut edge_to_component = vec![0; triconnected_components.edges.len()];
-    for (i, component) in triconnected_components.components.iter().enumerate() {
+    for (i, component) in triconnected_components.comp.iter().enumerate() {
         for &eid in &component.edges {
             edge_to_component[eid] = i;
         }
     }
 
-    for (i, component) in triconnected_components.components.iter().enumerate() {
+    for (i, component) in triconnected_components.comp.iter().enumerate() {
         for &eid in &component.edges {
             if edge_to_component[eid] == i {
                 continue;
@@ -48,18 +48,18 @@ pub fn get_rooted_spqr_tree(graph: &UnGraph) -> RootedSPQRTree {
     let unrooted_spqr = get_spqr_tree(graph);
     let mut rooted_spqr = RootedSPQRTree::new(&unrooted_spqr);
 
-    let mut mark = vec![false; rooted_spqr.triconnected_components.edges.len()];
+    let mut mark = vec![false; rooted_spqr.blocks.edges.len()];
     fn root_tree(tree: &mut RootedSPQRTree, u: usize, mark: &mut Vec<bool>) {
-        for &eid in tree.triconnected_components.components[u].edges.iter() {
+        for &eid in tree.blocks.comp[u].edges.iter() {
             if mark[eid] {
-                tree.reference_edge[u] = Some(eid);
+                tree.ref_edge[u] = Some(eid);
             }
 
-            let (a, b) = tree.triconnected_components.edges[eid];
+            let (a, b) = tree.blocks.edges[eid];
 
             for turn in [a, b] {
-                if tree.allocation_node[turn] == usize::MAX {
-                    tree.allocation_node[turn] = u;
+                if tree.alloc_node[turn] == usize::MAX {
+                    tree.alloc_node[turn] = u;
                 }
             }
 
@@ -67,19 +67,19 @@ pub fn get_rooted_spqr_tree(graph: &UnGraph) -> RootedSPQRTree {
         }
 
         // remove edge to parent
-        if let Some(parent) = tree.parent_node[u] {
+        if let Some(parent) = tree.par_v[u] {
             tree.adj[u].retain(|&x| x != parent);
         }
 
         let neighbors = tree.adj[u].clone();
 
         for &to in neighbors.iter() {
-            tree.parent_node[to] = Some(u);
+            tree.par_v[to] = Some(u);
             root_tree(tree, to, mark);
         }
     }
 
-    if rooted_spqr.triconnected_components.components.len() > 0 {
+    if rooted_spqr.blocks.comp.len() > 0 {
         root_tree(&mut rooted_spqr, 0, &mut mark);
     }
 
@@ -97,9 +97,9 @@ mod tests {
     use super::*;
 
     fn same_graphs(og_graph: &UnGraph, spqr_tree: &SPQRTree) -> bool {
-        let mut edge_counts = vec![0; spqr_tree.triconnected_components.edges.len()];
+        let mut edge_counts = vec![0; spqr_tree.blocks.edges.len()];
 
-        let mut vis = vec![false; spqr_tree.triconnected_components.components.len()];
+        let mut vis = vec![false; spqr_tree.blocks.comp.len()];
         fn dfs(
             spqr_tree: &SPQRTree,
             component_id: usize,
@@ -108,7 +108,7 @@ mod tests {
         ) {
             vis[component_id] = true;
 
-            for &eid in &spqr_tree.triconnected_components.components[component_id].edges {
+            for &eid in &spqr_tree.blocks.comp[component_id].edges {
                 edge_counts[eid] += 1;
             }
 
@@ -130,7 +130,7 @@ mod tests {
         let mut spq_edges = vec![];
         for (eid, count) in edge_counts.iter().enumerate() {
             if *count == 1 {
-                let (mut u, mut v) = spqr_tree.triconnected_components.edges[eid];
+                let (mut u, mut v) = spqr_tree.blocks.edges[eid];
                 if u > v {
                     mem::swap(&mut u, &mut v);
                 }

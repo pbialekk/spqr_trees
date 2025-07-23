@@ -6,16 +6,16 @@ use crate::triconnected_blocks::outside_structures::TriconnectedComponents;
 /// - `adj[u]` contains the indices of components adjacent to component `u` in the SPQR tree.
 #[derive(Debug, Clone)]
 pub struct SPQRTree {
-    pub triconnected_components: TriconnectedComponents,
+    pub blocks: TriconnectedComponents,
     pub adj: Vec<Vec<usize>>,
 }
 
 impl SPQRTree {
     pub fn new(triconnected_components: &TriconnectedComponents) -> Self {
-        let n = triconnected_components.components.len();
+        let n = triconnected_components.comp.len();
         let adj = vec![Vec::new(); n];
         SPQRTree {
-            triconnected_components: triconnected_components.clone(),
+            blocks: triconnected_components.clone(),
             adj,
         }
     }
@@ -32,19 +32,19 @@ impl SPQRTree {
 /// - `parent_node[v]`: Parent component of `v` in the SPQR tree
 #[derive(Debug, Clone)]
 pub struct RootedSPQRTree {
-    pub triconnected_components: TriconnectedComponents,
+    pub blocks: TriconnectedComponents,
     pub adj: Vec<Vec<usize>>,
 
-    pub allocation_node: Vec<usize>,
-    pub reference_edge: Vec<Option<usize>>,
-    pub parent_node: Vec<Option<usize>>,
+    pub alloc_node: Vec<usize>,
+    pub ref_edge: Vec<Option<usize>>,
+    pub par_v: Vec<Option<usize>>,
 }
 
 impl RootedSPQRTree {
     pub fn new(spqr_tree: &SPQRTree) -> Self {
         let n_comps = spqr_tree.adj.len();
         let n_verts = spqr_tree
-            .triconnected_components
+            .blocks
             .edges
             .iter()
             .map(|(a, b)| a.max(b))
@@ -52,11 +52,11 @@ impl RootedSPQRTree {
             .unwrap()
             + 1;
         RootedSPQRTree {
-            triconnected_components: spqr_tree.triconnected_components.clone(),
+            blocks: spqr_tree.blocks.clone(),
             adj: spqr_tree.adj.clone(),
-            allocation_node: vec![usize::MAX; n_verts],
-            reference_edge: vec![None; n_comps],
-            parent_node: vec![None; n_comps],
+            alloc_node: vec![usize::MAX; n_verts],
+            ref_edge: vec![None; n_comps],
+            par_v: vec![None; n_comps],
         }
     }
 }

@@ -28,20 +28,20 @@ impl StaticBiconnectedTriconnectivity {
 
         let mut s_links = vec![HashMap::new(); tree.adj.len()];
 
-        let mut mark = vec![false; tree.triconnected_components.edges.len()];
+        let mut mark = vec![false; tree.blocks.edges.len()];
         fn dfs(
             tree: &RootedSPQRTree,
             u: usize,
             mark: &mut Vec<bool>,
             s_links: &mut Vec<HashMap<usize, (Option<usize>, Option<usize>)>>,
         ) {
-            for &eid in tree.triconnected_components.components[u].edges.iter() {
-                let (a, b) = tree.triconnected_components.edges[eid];
+            for &eid in tree.blocks.comp[u].edges.iter() {
+                let (a, b) = tree.blocks.edges[eid];
 
                 for turn in [a, b] {
-                    if tree.triconnected_components.components[u].component_type == ComponentType::S
+                    if tree.blocks.comp[u].comp_type == ComponentType::S
                         && !mark[eid]
-                        && !tree.triconnected_components.is_real_edge[eid]
+                        && !tree.blocks.is_real[eid]
                     {
                         let entry = s_links[u].entry(turn).or_insert((None, None));
                         if entry.0.is_none() {
@@ -60,7 +60,7 @@ impl StaticBiconnectedTriconnectivity {
             }
         }
 
-        if tree.triconnected_components.components.len() > 0 {
+        if tree.blocks.comp.len() > 0 {
             dfs(&tree, 0, &mut mark, &mut s_links);
 
             StaticBiconnectedTriconnectivity { tree, s_links }
@@ -74,7 +74,7 @@ impl StaticBiconnectedTriconnectivity {
 
     fn are_poles(&self, a: usize, b: usize, link: Option<usize>) -> bool {
         if let Some(link) = link {
-            let (s, t) = self.tree.triconnected_components.edges[link];
+            let (s, t) = self.tree.blocks.edges[link];
             if a == b {
                 return s == b || t == b;
             } else {
@@ -90,14 +90,14 @@ impl StaticBiconnectedTriconnectivity {
             return true;
         }
 
-        if self.tree.triconnected_components.components.len() == 0 {
+        if self.tree.blocks.comp.len() == 0 {
             return false;
         }
 
-        let proper_a = self.tree.allocation_node[a];
-        let proper_b = self.tree.allocation_node[b];
+        let proper_a = self.tree.alloc_node[a];
+        let proper_b = self.tree.alloc_node[b];
 
-        let proper_a_type = self.tree.triconnected_components.components[proper_a].component_type;
+        let proper_a_type = self.tree.blocks.comp[proper_a].comp_type;
 
         if proper_a == proper_b
             && (proper_a_type == ComponentType::R || proper_a_type == ComponentType::P)
@@ -105,9 +105,9 @@ impl StaticBiconnectedTriconnectivity {
             return true;
         }
         if proper_a_type == ComponentType::R {
-            let ref_edge = self.tree.reference_edge[proper_a];
+            let ref_edge = self.tree.ref_edge[proper_a];
             if let Some(ref_edge) = ref_edge {
-                let (s, t) = self.tree.triconnected_components.edges[ref_edge];
+                let (s, t) = self.tree.blocks.edges[ref_edge];
                 if s == b || t == b {
                     return true;
                 }

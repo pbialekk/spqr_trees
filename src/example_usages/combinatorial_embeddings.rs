@@ -1,11 +1,10 @@
-use embed_doc_image::embed_doc_image;
-use petgraph::graph::NodeIndex;
 use crate::{
-    spqr_tree::get_spqr_tree, triconnected_blocks::outside_structures::ComponentType,
-    block_cut::get_block_cut_tree,
-    UnGraph,
+    UnGraph, block_cut::get_block_cut_tree, spqr_tree::get_spqr_tree,
+    triconnected_blocks::outside_structures::ComponentType,
 };
-use hashbrown::{HashMap};
+use embed_doc_image::embed_doc_image;
+use hashbrown::HashMap;
+use petgraph::graph::NodeIndex;
 
 /// Counts the number of all combinatorial embeddings of a given graph in O(V + E).
 ///
@@ -63,8 +62,6 @@ pub fn count_combinatorial_embeddings(graph: &UnGraph) -> usize {
         }
     }
 
-
-
     let mut embeddings = 1;
     // this part accounts for biconnected components embeddings
     for i in 0..bc_tree.block_count {
@@ -100,9 +97,7 @@ pub fn count_combinatorial_embeddings(graph: &UnGraph) -> usize {
 ///
 /// ![SQPR_Envelope][spqr_envelope]
 #[embed_doc_image("spqr_envelope", "assets/spqr_tree_envelope.svg")]
-pub fn count_combinatorial_embeddings_biconnected(
-    graph: &UnGraph
-) -> usize {
+pub fn count_combinatorial_embeddings_biconnected(graph: &UnGraph) -> usize {
     if graph.node_count() <= 1 {
         return 1;
     }
@@ -110,8 +105,8 @@ pub fn count_combinatorial_embeddings_biconnected(
     let spqr_tree = get_spqr_tree(graph);
     let mut embeddings = 1;
 
-    for component in &spqr_tree.triconnected_components.components {
-        match component.component_type {
+    for component in &spqr_tree.blocks.comp {
+        match component.comp_type {
             ComponentType::P => {
                 let k = component.edges.len();
                 embeddings *= (1..k).product::<usize>();
@@ -174,7 +169,6 @@ mod tests {
         graph.add_edge(0.into(), 1.into(), EdgeLabel::Real);
         graph.add_edge(0.into(), 1.into(), EdgeLabel::Real);
 
-
         let embeddings = count_combinatorial_embeddings_biconnected(&graph);
         assert_eq!(embeddings, 24);
     }
@@ -221,7 +215,6 @@ mod tests {
         graph.add_edge(2.into(), 6.into(), EdgeLabel::Real);
         graph.add_edge(2.into(), 7.into(), EdgeLabel::Real);
         graph.add_edge(3.into(), 7.into(), EdgeLabel::Real);
-
 
         let embeddings = count_combinatorial_embeddings_biconnected(&graph);
         assert_eq!(embeddings, 16);

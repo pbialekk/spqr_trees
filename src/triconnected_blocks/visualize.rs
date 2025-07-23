@@ -39,7 +39,7 @@ pub fn visualize_triconnected(tricon: &TriconnectedComponents) -> String {
 
         // Edges
         for (eid, (from, to)) in tricon.edges.iter().enumerate() {
-            if tricon.is_real_edge[eid] {
+            if tricon.is_real[eid] {
                 writeln!(
                     output,
                     "    {} -- {} [label=\"{}\", color=black];",
@@ -53,8 +53,8 @@ pub fn visualize_triconnected(tricon: &TriconnectedComponents) -> String {
         writeln!(output).unwrap();
     }
 
-    for (i, comp) in tricon.components.iter().enumerate() {
-        let (prefix, label, fillcolor, nodecolor) = match comp.component_type {
+    for (i, comp) in tricon.comp.iter().enumerate() {
+        let (prefix, label, fillcolor, nodecolor) = match comp.comp_type {
             ComponentType::R => (
                 "R",
                 format!("R-component ({})", i + 1),
@@ -114,7 +114,7 @@ pub fn visualize_triconnected(tricon: &TriconnectedComponents) -> String {
                 tricon.edges[*e].0,
                 tricon.edges[*e].1,
                 *e,
-                !tricon.is_real_edge[*e],
+                !tricon.is_real[*e],
             );
             writeln!(
                 output,

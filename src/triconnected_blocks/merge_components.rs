@@ -20,7 +20,7 @@ pub fn merge_components(m: usize, split_components: &mut Vec<Component>) {
         if merged_already[i] {
             continue;
         }
-        if component.component_type == ComponentType::R {
+        if component.comp_type == ComponentType::R {
             ret.push(component.clone());
             continue;
         }
@@ -36,7 +36,7 @@ pub fn merge_components(m: usize, split_components: &mut Vec<Component>) {
 
             if other_idx != i
                 && !merged_already[other_idx]
-                && split_components[other_idx].component_type == component.component_type
+                && split_components[other_idx].comp_type == component.comp_type
             {
                 merged_already[other_idx] = true;
 
