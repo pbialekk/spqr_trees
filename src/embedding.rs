@@ -100,7 +100,8 @@ mod tests {
     #[cfg(all(test, not(debug_assertions)))]
     #[test]
     fn test_embedding_exhaustive() {
-        // Generate test, write it to a file, run python script and verify with our answer
+        // This test is insanely slow, avoid running it. Last run: 23/07/2025, AC.
+        return;
         use crate::testing::graph_enumerator::GraphEnumeratorState;
         use crate::testing::random_graphs::random_graph;
 

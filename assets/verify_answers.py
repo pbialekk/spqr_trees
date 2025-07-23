@@ -8,7 +8,8 @@ def read_tests(filename):
     """
     Reads multiple tests from the input file.
     Each test consists of:
-      - Lines with edges: ui,vi
+      - First line: n m (number of vertices and edges)
+      - Next m lines: ui,vi (edges)
       - A line with '+' or '-' (planar or not)
       - If '+', lines with embedding: u v1 v2 ... (neighbors in CCW order)
     Returns a list of dicts: {'edges': [...], 'expected': '+/-', 'embedding': {...} or None}
@@ -18,9 +19,10 @@ def read_tests(filename):
         lines = [line.strip() for line in f if line.strip()]
     i = 0
     while i < len(lines):
+        n, m = map(int, lines[i].split())
+        i += 1
         edges = []
-        # Read edges
-        while i < len(lines) and not (lines[i].startswith('+') or lines[i].startswith('-')):
+        for _ in range(m):
             u, v = map(int, lines[i].split(','))
             edges.append((u, v))
             i += 1
@@ -32,8 +34,10 @@ def read_tests(filename):
         if expected == '+':
             embedding = {}
             # Read embedding lines until next test or EOF
-            while i < len(lines) and ' ' in lines[i]:
-                u_str, neighbors_str = lines[i].split(' ', 1)
+            for _ in range(n):
+                parts = lines[i].split(' ', 1)
+                u_str = parts[0]
+                neighbors_str = parts[1] if len(parts) > 1 else ''
                 u = int(u_str.strip())
                 neighbors = [int(v) for v in neighbors_str.strip().split()]
                 embedding[u] = neighbors
