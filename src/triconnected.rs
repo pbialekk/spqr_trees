@@ -734,13 +734,13 @@ mod tests {
             let in_graph = random_biconnected_graph(n, m, i);
 
             let tricon = get_triconnected_components(&in_graph);
-            verify_components(&in_graph, &tricon.components, &tricon.edges);
+            verify_components(&in_graph, &tricon.comp, &tricon.edges);
 
             let n = in_graph.node_references().count();
             let m = in_graph.edge_references().count();
 
             let brute_mat = are_triconnected_brute(&in_graph);
-            let fast_mat = answer_fast(n, m, &tricon.components, &tricon.edges);
+            let fast_mat = answer_fast(n, m, &tricon.comp, &tricon.edges);
 
             assert_eq!(brute_mat, fast_mat);
         }
@@ -789,13 +789,13 @@ mod tests {
                 let in_graph = bct.blocks[0].clone();
 
                 let tricon = get_triconnected_components(&in_graph);
-                verify_components(&in_graph, &tricon.components, &tricon.edges);
+                verify_components(&in_graph, &tricon.comp, &tricon.edges);
 
                 let n = in_graph.node_references().count();
                 let m = in_graph.edge_references().count();
 
                 let brute_mat = are_triconnected_brute(&in_graph);
-                let fast_mat = answer_fast(n, m, &tricon.components, &tricon.edges);
+                let fast_mat = answer_fast(n, m, &tricon.comp, &tricon.edges);
 
                 assert_eq!(brute_mat, fast_mat);
             }
