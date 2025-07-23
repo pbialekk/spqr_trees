@@ -11,4 +11,4 @@ For a documentation please see `examples/`, `src/example_usages`, `tests` and ma
 
 ---
 
-This library was created as final year project at TCS @ Jegiellonian University.
+This library was created as final year project of TCS @ Jegiellonian University.
