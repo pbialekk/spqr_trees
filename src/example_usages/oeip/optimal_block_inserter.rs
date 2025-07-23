@@ -3,6 +3,7 @@ use petgraph::algo::dijkstra;
 use petgraph::graph::NodeIndex;
 use petgraph::visit::IntoNodeReferences;
 
+use crate::embedding::is_planar;
 use crate::example_usages::oeip::dual_graph::get_dual_graph;
 use crate::testing::grids::Point;
 use crate::{
@@ -50,6 +51,8 @@ use crate::{
 ///
 /// ## Reference:
 /// - [Optimal Edge Insertion Problem](https://www.ac.tuwien.ac.at/files/pub/Gutwenger01.pdf)
+
+#[allow(dead_code)]
 #[derive(Debug, Clone)]
 pub struct OptimalBlockInserter {
     /// Input graph
@@ -66,8 +69,11 @@ pub struct OptimalBlockInserter {
     pair_of_components_to_virt_edge: HashMap<(usize, usize), usize>,
 }
 
+#[allow(dead_code)]
 impl OptimalBlockInserter {
     pub fn new(graph: &UnGraph, points: Vec<Point>) -> Self {
+        assert!(is_planar(graph, false).0, "Graph must be planar");
+
         let tree = get_spqr_tree(&graph);
         let mut component_vertex_set = vec![HashSet::new(); tree.blocks.comp.len()];
         let mut first_allocation_node = vec![None; graph.node_references().count()];

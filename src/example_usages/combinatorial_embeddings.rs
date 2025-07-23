@@ -24,6 +24,7 @@ use petgraph::graph::NodeIndex;
 ///
 /// This algorithm can give you an idea how to go through all the embeddings and choose appropriate
 /// based on given conditions.
+#[allow(dead_code)]
 pub fn count_combinatorial_embeddings(graph: &UnGraph) -> usize {
     let bc_tree = get_block_cut_tree(graph);
 
