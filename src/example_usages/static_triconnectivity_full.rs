@@ -16,6 +16,7 @@ use crate::{
 /// ## Reference:
 /// - [On-line maintenance of triconnected components with SPQR-trees](https://link.springer.com/article/10.1007/BF01961541)
 
+#[allow(dead_code)]
 pub struct StaticTriconnectivity {
     tree: BlockCutTree,
 
@@ -25,6 +26,7 @@ pub struct StaticTriconnectivity {
     parent: Vec<Option<usize>>, // for each vertex in the bct we store its parent
 }
 
+#[allow(dead_code)]
 impl StaticTriconnectivity {
     pub fn new(graph: &UnGraph) -> Self {
         let bct = get_block_cut_tree(&graph);

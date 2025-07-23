@@ -63,7 +63,7 @@ fn dfs(u: usize, time: &mut usize, graph: &mut GraphInternal) {
 /// all edges in `graph.edges` are oriented from source to target.
 ///
 /// The idea is pretty simple: we run DFS and we update `low1` and `low2` when we can
-pub(crate) fn run_palm_dfs(graph: &mut GraphInternal, root: usize) {
+pub fn run_palm_dfs(graph: &mut GraphInternal, root: usize) {
     let mut time = 0;
     dfs(root, &mut time, graph);
 

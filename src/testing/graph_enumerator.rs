@@ -3,27 +3,10 @@ use petgraph::visit::NodeIndexable;
 use crate::{EdgeLabel, UnGraph};
 
 #[allow(dead_code)]
-pub(crate) struct GraphEnumeratorState {
+pub struct GraphEnumeratorState {
     pub n: usize,
     pub mask: usize,
     pub last_mask: usize,
-}
-
-// Example usage to avoid dead_code warning
-#[cfg(test)]
-mod tests {
-    use super::*;
-
-    #[test]
-    fn test_graph_enumerator_state_construction() {
-        let mut enumerator = GraphEnumeratorState {
-            n: 3,
-            mask: 0,
-            last_mask: 7,
-        };
-        // Just call next to ensure it's used
-        let _ = enumerator.next();
-    }
 }
 
 impl Iterator for GraphEnumeratorState {

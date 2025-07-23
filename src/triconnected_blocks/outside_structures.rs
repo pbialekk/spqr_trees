@@ -1,7 +1,7 @@
 use crate::triconnected_blocks::graph_internal::GraphInternal;
 
 #[derive(Debug, Clone, PartialEq)]
-pub(crate) enum EdgeType {
+pub enum EdgeType {
     Tree,
     Back,
     Killed,
@@ -43,14 +43,14 @@ pub struct Component {
 }
 
 impl Component {
-    pub(crate) fn new(component_type: ComponentType) -> Self {
+    pub fn new(component_type: ComponentType) -> Self {
         Self {
             edges: Vec::new(),
             component_type,
         }
     }
 
-    pub(crate) fn push_edge(
+    pub fn push_edge(
         &mut self,
         eid: usize,
         graph: &mut GraphInternal,
@@ -64,7 +64,7 @@ impl Component {
         self
     }
 
-    pub(crate) fn commit(&mut self, split_components: &mut Vec<Component>) {
+    pub fn commit(&mut self, split_components: &mut Vec<Component>) {
         if self.component_type == ComponentType::UNSURE {
             self.component_type = if self.edges.len() >= 4 {
                 ComponentType::R

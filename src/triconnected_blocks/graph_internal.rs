@@ -6,7 +6,7 @@ use crate::{UnGraph, triconnected_blocks::outside_structures::EdgeType};
 
 /// Wrapper for `petgraph` implementation of a graph, because it forbids mutable access to edges brr...
 #[derive(Debug, Clone)]
-pub(crate) struct GraphInternal {
+pub struct GraphInternal {
     pub n: usize,                         // number of vertices
     pub m: usize,                         // number of edges
     pub adj: Vec<Vec<usize>>,             // adjacency list, edges are stored as indices in `edges`

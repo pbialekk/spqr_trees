@@ -16,8 +16,11 @@ jobs:
 
     steps:
     - uses: actions/checkout@v4
-    - name: Install dot
-      run: sudo apt install graphviz -y
+    - name: Install Python3 and networkx
+      run: |
+        sudo apt update
+        sudo apt install python3 python3-pip -y
+        pip3 install networkx
     - name: Build
       run: cargo build --verbose
     - name: Run tests
