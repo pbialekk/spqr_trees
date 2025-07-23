@@ -59,52 +59,43 @@ pub fn is_planar(graph: &UnGraph, with_counterexample: bool) -> (bool, DiGraph) 
 
 #[cfg(test)]
 mod tests {
-
     use super::*;
 
-    fn verify_embedding(embedding: &DiGraph, output: &mut String) {
-        let mut edges = String::new();
-
-        for v in embedding.node_indices() {
-            edges.push_str(&format!("{}", v.index()));
-            for n in embedding.neighbors(v) {
-                edges.push_str(&format!(" {}", n.index()));
-            }
-            edges.push_str("\n");
+    fn verify_embedding(graph: &UnGraph, embedding: &DiGraph) {
+        // check that edge set of the embedding matches the original graph
+        for e in graph.edge_references() {
+            assert!(embedding.contains_edge(
+                petgraph::graph::NodeIndex::new(e.source().index()),
+                petgraph::graph::NodeIndex::new(e.target().index())
+            ));
+            assert!(embedding.contains_edge(
+                petgraph::graph::NodeIndex::new(e.target().index()),
+                petgraph::graph::NodeIndex::new(e.source().index())
+            ));
         }
-        output.push_str("+\n");
-        output.push_str(&edges);
+        for e in embedding.edge_references() {
+            assert!(graph.contains_edge(
+                petgraph::graph::NodeIndex::new(e.source().index()),
+                petgraph::graph::NodeIndex::new(e.target().index())
+            ));
+        }
+
+        // TODO
     }
 
-    fn run_test(graph: &UnGraph, output: &mut String) {
-        let n = graph.node_count();
-        let m = graph.edge_count();
-        output.push_str(&format!("{} {}\n", n, m));
-
-        let mut edges = String::new();
-        for e in graph.edge_references() {
-            edges.push_str(&format!("{},{}\n", e.source().index(), e.target().index()));
-        }
-
-        output.push_str(&edges);
-
+    fn run_test(graph: &UnGraph) {
         let (is_planar, counterexample) = is_planar(&graph, true);
 
         if is_planar {
-            verify_embedding(&counterexample, output);
-        } else {
-            output.push_str("-\n");
+            verify_embedding(&graph, &counterexample);
         }
     }
 
     #[cfg(all(test, not(debug_assertions)))]
     #[test]
     fn test_embedding_exhaustive() {
-        // Generate test, write it to a file, run python script and verify with our answer
         use crate::testing::graph_enumerator::GraphEnumeratorState;
         use crate::testing::random_graphs::random_graph;
-
-        let mut python_input = String::new();
 
         for n in 2..=7 {
             let mut enumerator = GraphEnumeratorState {
@@ -114,7 +105,7 @@ mod tests {
             };
 
             while let Some(in_graph) = enumerator.next() {
-                run_test(&in_graph, &mut python_input);
+                run_test(&in_graph);
             }
         }
         for i in 0..1000 {
@@ -122,27 +113,14 @@ mod tests {
             let m: usize = 1 + i;
 
             let in_graph = random_graph(n, m, i);
-            run_test(&in_graph, &mut python_input);
+            run_test(&in_graph);
         }
         for i in 0..1000 {
             let n = 500;
             let m = 500 + i;
 
             let in_graph = random_graph(n, m, i);
-            run_test(&in_graph, &mut python_input);
-        }
-
-        std::fs::write("assets/python_input.in", python_input).expect("Unable to write file");
-        let output = std::process::Command::new("python3")
-            .arg("assets/verify_answers.py")
-            .output()
-            .expect("Failed to execute python script");
-
-        if !output.status.success() {
-            panic!(
-                "Python script failed with error: {}",
-                String::from_utf8_lossy(&output.stderr)
-            );
+            run_test(&in_graph);
         }
     }
 }

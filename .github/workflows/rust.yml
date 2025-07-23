@@ -16,8 +16,6 @@ jobs:
 
     steps:
     - uses: actions/checkout@v4
-    - name: Install dot
-      run: sudo apt install graphviz -y
     - name: Build
       run: cargo build --verbose
     - name: Run tests
