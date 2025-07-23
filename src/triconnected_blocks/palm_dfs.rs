@@ -54,13 +54,15 @@ fn dfs(u: usize, time: &mut usize, graph: &mut GraphInternal) {
 ///
 /// This function calculates and populates the following for each vertex:
 /// - `num[u]`: The preorder number (DFS visitation order) of vertex `u`.
-/// - `low1[u]`: The lowest `num` reachable from `u` via tree edges.
-/// - `low2[u]`: The second lowest `num` reachable from `u`.
+/// - `low1[u]`: The lowest `num` reachable from `u` via tree edges (0 or more) followed by exactly 1 `Back` edge.
+/// - `low2[u]`: The second lowest `num` reachable from `u` in the same manner as `low1[u]`.
 /// - `sub[u]`: The size of the subtree rooted at `u`.
 ///
 /// Additionally, it classifies each edge as either a `Tree` edge or a `Back` edge,
 /// updating the `edge_type` field in the graph accordingly. After the DFS,
 /// all edges in `graph.edges` are oriented from source to target.
+///
+/// The idea is pretty simple: we run DFS and we update `low1` and `low2` when we can
 pub fn run_palm_dfs(graph: &mut GraphInternal, root: usize) {
     let mut time = 0;
     dfs(root, &mut time, graph);

@@ -4,15 +4,16 @@ use petgraph::visit::EdgeRef;
 
 use crate::{UnGraph, triconnected_blocks::outside_structures::EdgeType};
 
+/// Wrapper for `petgraph` implementation of a graph, because it forbids mutable access to edges brr...
 #[derive(Debug, Clone)]
 pub struct GraphInternal {
     pub n: usize,                         // number of vertices
     pub m: usize,                         // number of edges
     pub adj: Vec<Vec<usize>>,             // adjacency list, edges are stored as indices in `edges`
-    pub edges: Vec<(usize, usize)>,       // edges in the form (source, target)
+    pub edges: Vec<(usize, usize)>,       // edges in the form (source, target), each edge is stored only once
     pub edge_type: Vec<Option<EdgeType>>, // edge type, None means not visited yet
 
-    pub num: Vec<usize>,
+    pub num: Vec<usize>, // new ordering of vertices
 
     pub par_edge: Vec<Option<usize>>, // edge id of the parent edge in DFS tree
     pub par: Vec<Option<usize>>,
@@ -33,7 +34,7 @@ impl GraphInternal {
         for e in graph.edge_references() {
             let (mut s, mut t) = (e.source().index(), e.target().index());
             if s > t {
-                swap(&mut s, &mut t);
+                swap(&mut s, &mut t); // we take advantage of DFS traversal, no need to store both directions
             }
             ret.new_edge(s, t, None);
         }
