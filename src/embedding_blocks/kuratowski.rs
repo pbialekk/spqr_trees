@@ -49,8 +49,6 @@ pub fn get_counterexample(mut graph: UnGraph, with_counterexample: bool) -> DiGr
             .filter(|to| !to_remove.contains(to))
             .collect::<Vec<_>>();
 
-        dbg!(&node, &neis);
-
         if neis.len() == 0 {
             to_remove.insert(node);
             continue;
