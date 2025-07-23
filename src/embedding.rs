@@ -101,6 +101,7 @@ mod tests {
     #[test]
     fn test_embedding_exhaustive() {
         // This test is insanely slow, avoid running it. Last run: 23/07/2025, AC.
+        return;
         use crate::testing::graph_enumerator::GraphEnumeratorState;
 
         let mut python_input = String::new();
