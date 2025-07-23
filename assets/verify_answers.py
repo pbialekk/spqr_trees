@@ -14,36 +14,33 @@ def read_tests(filename):
       - If '+', lines with embedding: u v1 v2 ... (neighbors in CCW order)
     Returns a list of dicts: {'edges': [...], 'expected': '+/-', 'embedding': {...} or None}
     """
-    tests = []
     with open(filename, 'r') as f:
-        lines = [line.strip() for line in f if line.strip()]
-    i = 0
-    while i < len(lines):
-        n, m = map(int, lines[i].split())
-        i += 1
-        edges = []
-        for _ in range(m):
-            u, v = map(int, lines[i].split(','))
-            edges.append((u, v))
-            i += 1
-        if i >= len(lines):
-            break
-        expected = lines[i][0]
-        i += 1
-        embedding = None
-        if expected == '+':
-            embedding = {}
-            # Read embedding lines until next test or EOF
-            for _ in range(n):
-                parts = lines[i].split(' ', 1)
-                u_str = parts[0]
-                neighbors_str = parts[1] if len(parts) > 1 else ''
-                u = int(u_str.strip())
-                neighbors = [int(v) for v in neighbors_str.strip().split()]
-                embedding[u] = neighbors
-                i += 1
-        tests.append({'edges': edges, 'expected': expected, 'embedding': embedding})
-    return tests
+        lines = (line.strip() for line in f if line.strip())
+        lines = iter(lines)
+        while True:
+            try:
+                n, m = map(int, next(lines).split())
+            except StopIteration:
+                break
+            edges = []
+            for _ in range(m):
+                u, v = map(int, next(lines).split(','))
+                edges.append((u, v))
+            try:
+                expected = next(lines)[0]
+            except StopIteration:
+                break
+            embedding = None
+            if expected == '+':
+                embedding = {}
+                for _ in range(n):
+                    parts = next(lines).split(' ', 1)
+                    u_str = parts[0]
+                    neighbors_str = parts[1] if len(parts) > 1 else ''
+                    u = int(u_str.strip())
+                    neighbors = [int(v) for v in neighbors_str.strip().split()]
+                    embedding[u] = neighbors
+            yield {'edges': edges, 'expected': expected, 'embedding': embedding}
 
 def verify_embedding(edges, embedding):
     """
@@ -68,7 +65,6 @@ def verify_embedding(edges, embedding):
 
 def main():
     tests = read_tests('assets/python_input.in')
-    print(f"Read {len(tests)} tests from input file.")
     for idx, test in enumerate(tests, 1):
         if idx % 10000 == 0:
             print(f"Processing test {idx}...")

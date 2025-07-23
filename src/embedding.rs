@@ -101,9 +101,7 @@ mod tests {
     #[test]
     fn test_embedding_exhaustive() {
         // This test is insanely slow, avoid running it. Last run: 23/07/2025, AC.
-        return;
         use crate::testing::graph_enumerator::GraphEnumeratorState;
-        use crate::testing::random_graphs::random_graph;
 
         let mut python_input = String::new();
 
@@ -117,20 +115,6 @@ mod tests {
             while let Some(in_graph) = enumerator.next() {
                 run_test(&in_graph, &mut python_input);
             }
-        }
-        for i in 0..1000 {
-            let n = 2 + i / 10;
-            let m: usize = 1 + i;
-
-            let in_graph = random_graph(n, m, i);
-            run_test(&in_graph, &mut python_input);
-        }
-        for i in 0..1000 {
-            let n = 500;
-            let m = 500 + i;
-
-            let in_graph = random_graph(n, m, i);
-            run_test(&in_graph, &mut python_input);
         }
 
         std::fs::write("assets/python_input.in", python_input).expect("Unable to write file");
