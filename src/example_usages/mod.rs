@@ -1,4 +1,4 @@
-pub(crate) mod combinatorial_embeddings;
-pub(crate) mod oeip;
-pub(crate) mod static_triconnectivity_bicon;
-pub(crate) mod static_triconnectivity_full;
+pub mod combinatorial_embeddings;
+pub mod oeip;
+pub mod static_triconnectivity_bicon;
+pub mod static_triconnectivity_full;
