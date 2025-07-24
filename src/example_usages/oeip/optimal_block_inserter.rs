@@ -204,21 +204,17 @@ impl OptimalBlockInserter {
     /// Deletes unnecessary nodes from the path between two allocation nodes.
     fn find_shortest_path_between_allocation_nodes(&self, u: usize, v: usize) -> Vec<usize> {
         let mut path = self.find_arbitrary_path_between_allocation_nodes(u, v);
-        path.reverse();
-        while path.len() > 1 {
-            if self.component_vertex_set[path[path.len() - 2]].contains(&u) {
-                path.pop();
-            } else {
-                break;
+
+        for turn in [u, v] {
+            path.reverse();
+            while path.len() > 1 {
+                if self.component_vertex_set[path[path.len() - 2]].contains(&turn) {
+                    path.pop();
+                } else {
+                    break;
+                }
             }
-        }
-        path.reverse();
-        while path.len() > 1 {
-            if self.component_vertex_set[path[path.len() - 2]].contains(&v) {
-                path.pop();
-            } else {
-                break;
-            }
+
         }
 
         path
@@ -347,49 +343,33 @@ impl OptimalBlockInserter {
 
             let mut dual_graph = get_dual_graph(&points, &expanded_graph);
 
+            let mut xids = vec![];
+            let indices = vec![u, v];
+
             // Augment dual graph with src and dst
-            let x1 = dual_graph.graph.node_count();
-            let x1id = dual_graph.graph.add_node(x1 as u32);
-            let x2 = dual_graph.graph.node_count();
-            let x2id = dual_graph.graph.add_node(x2 as u32);
-
-            if let Some(_u_virt_edge) = u_virt_edge {
-                // Not present in skeleton
-                dual_graph.graph.add_edge(
-                    NodeIndex::new(dual_graph.outer_face),
-                    x1id,
-                    EdgeLabel::Structure,
-                );
-            } else {
-                for (i, face) in dual_graph.faces.iter().enumerate() {
-                    if face.vertices.contains(&node_to_expanded[&u].index()) {
-                        dual_graph
-                            .graph
-                            .add_edge(NodeIndex::new(i), x1id, EdgeLabel::Structure);
-                    }
-                }
-            }
-
-            if let Some(_v_virt_edge) = v_virt_edge {
-                // Not present in skeleton
-                dual_graph.graph.add_edge(
-                    NodeIndex::new(dual_graph.outer_face),
-                    x2id,
-                    EdgeLabel::Structure,
-                );
-            } else {
-                for (i, face) in dual_graph.faces.iter().enumerate() {
-                    if face.vertices.contains(&node_to_expanded[&v].index()) {
-                        dual_graph
-                            .graph
-                            .add_edge(NodeIndex::new(i), x2id, EdgeLabel::Structure);
+            for (i, edge) in [u_virt_edge, v_virt_edge].iter().enumerate() {
+                xids.push(dual_graph.graph.add_node(dual_graph.graph.node_count() as u32));
+                if edge.is_some() {
+                    // Not present in skeleton
+                    dual_graph.graph.add_edge(
+                        NodeIndex::new(dual_graph.outer_face),
+                        xids[i],
+                        EdgeLabel::Structure,
+                    );
+                } else {
+                    for (j, face) in dual_graph.faces.iter().enumerate() {
+                        if face.vertices.contains(&node_to_expanded[&indices[i]].index()) {
+                            dual_graph
+                                .graph
+                                .add_edge(NodeIndex::new(j), xids[i], EdgeLabel::Structure);
+                        }
                     }
                 }
             }
 
             // should be BFS but petgraph has dijkstra implemented ;)
-            let costs = dijkstra(&dual_graph.graph, x1id, Option::from(x2id), |_| 1);
-            crossings += costs.get(&x2id).unwrap() - 2; // -2  because we added edges to connect to faces
+            let costs = dijkstra(&dual_graph.graph, xids[0], Option::from(xids[1]), |_| 1);
+            crossings += costs.get(&xids[1]).unwrap() - 2; // -2  because we added edges to connect to faces
         }
 
         crossings

@@ -96,9 +96,10 @@ mod tests {
             output.push_str("-\n");
         }
     }
-
+    
     #[cfg(all(test, not(debug_assertions)))]
     #[test]
+    #[allow(unreachable_code)]
     fn test_embedding_exhaustive() {
         // This test is insanely slow, avoid running it. Last run: 23/07/2025, AC.
         return;
