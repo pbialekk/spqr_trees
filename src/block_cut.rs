@@ -1,8 +1,8 @@
-use embed_doc_image::embed_doc_image;
 use crate::{DFSEdgeLabel, EdgeLabel, UnGraph};
+use embed_doc_image::embed_doc_image;
+use hashbrown::HashSet;
 use petgraph::graph::{EdgeIndex, NodeIndex};
 use petgraph::visit::{EdgeRef, NodeIndexable};
-use hashbrown::{HashSet};
 use radsort;
 
 /// Represents the block-cut tree of a graph, containing blocks, cut vertices, and their relationships.
@@ -61,7 +61,6 @@ fn dfs(
     let mut low = preorder[u];
     let mut children = 0;
 
-
     // process all edges of u to get true lowpoint of u
     for e in graph.edges(NodeIndex::new(u)) {
         let v = e.target().index();
@@ -94,9 +93,10 @@ fn dfs(
                 let block = edge_stack[stack_len..].to_vec();
                 edge_stack.truncate(stack_len);
                 blocks.push(block);
-
             }
-        } else if preorder[v] < preorder[u] && edge_labels[e.id().index()] == DFSEdgeLabel::Unvisited {
+        } else if preorder[v] < preorder[u]
+            && edge_labels[e.id().index()] == DFSEdgeLabel::Unvisited
+        {
             // may be parallel edge or back edge
             edge_stack.push(e.id().index());
             edge_labels[e.id().index()] = DFSEdgeLabel::Back;
@@ -256,7 +256,8 @@ pub fn get_block_cut_tree(graph: &UnGraph) -> BlockCutTree {
             block_graph.add_edge(
                 NodeIndex::new(bicon_internal_indices[v_idx]),
                 NodeIndex::new(bicon_internal_indices[w_idx]),
-                EdgeLabel::Real);
+                EdgeLabel::Real,
+            );
         }
 
         block_cut_tree.graph.add_node(i.try_into().unwrap());
@@ -368,12 +369,10 @@ pub fn draw_full_block_cut_tree(bct: &BlockCutTree) -> String {
         // Add edges inside the block
         for edge in block.edge_references() {
             let (a, b) = (edge.source(), edge.target());
-            let (label_a, label_b) = (
-                block.node_weight(a).unwrap(),
-                block.node_weight(b).unwrap(),
-            );
+            let (label_a, label_b) = (block.node_weight(a).unwrap(), block.node_weight(b).unwrap());
             output.push_str(&format!(
-                "    b_{}_{} -- b_{}_{};\n", i, label_a, i, label_b
+                "    b_{}_{} -- b_{}_{};\n",
+                i, label_a, i, label_b
             ));
         }
         output.push_str("  }\n");
@@ -401,9 +400,7 @@ pub fn draw_full_block_cut_tree(bct: &BlockCutTree) -> String {
                 // This is a cut vertex
                 output.push_str(&format!(
                     "  b_{}_{} -- cut{} [style=dashed, penwidth=3];\n",
-                    i,
-                    label,
-                    label
+                    i, label, label
                 ));
             }
         }
@@ -420,10 +417,7 @@ pub fn draw_full_block_cut_tree(bct: &BlockCutTree) -> String {
 /// Cut vertices are colored red.
 ///
 /// Intended to use with `dot`.
-pub fn draw_bc_tree_dfs(
-    graph: &UnGraph,
-    bc_tree: &BlockCutTree,
-) -> String {
+pub fn draw_bc_tree_dfs(graph: &UnGraph, bc_tree: &BlockCutTree) -> String {
     let mut output = String::from("digraph {\n");
     output.push_str("  rankdir=TD;\n");
     output.push_str("  node [style=filled, shape=circle];\n");
@@ -451,19 +445,16 @@ pub fn draw_bc_tree_dfs(
                     std::mem::swap(&mut a, &mut b);
                 }
                 "solid"
-            },
+            }
             DFSEdgeLabel::Back => {
                 if bc_tree.preorder[a] < bc_tree.preorder[b] {
                     std::mem::swap(&mut a, &mut b);
                 }
                 "dashed"
-            },
+            }
             _ => "",
         };
-        output.push_str(&format!(
-            "  {} -> {} [style={}];\n",
-            a, b, style
-        ));
+        output.push_str(&format!("  {} -> {} [style={}];\n", a, b, style));
     }
 
     output.push_str("}\n");
@@ -601,7 +592,7 @@ mod dfs_tests {
         let d = g.add_node(3);
         g.add_edge(a, b, EdgeLabel::Real);
         g.add_edge(a, b, EdgeLabel::Real); // parallel edge
-        g.add_edge(a, b ,EdgeLabel::Real); // parallel edge
+        g.add_edge(a, b, EdgeLabel::Real); // parallel edge
         g.add_edge(b, c, EdgeLabel::Real);
         g.add_edge(c, d, EdgeLabel::Real);
         g.add_edge(d, b, EdgeLabel::Real);
@@ -610,21 +601,26 @@ mod dfs_tests {
         //         \  |
         //           3
 
-        assert_dfs(&g, 0, &[false, true, false, false],
-                   &mut [vec![0, 1, 2], vec![3, 4, 5]]);
+        assert_dfs(
+            &g,
+            0,
+            &[false, true, false, false],
+            &mut [vec![0, 1, 2], vec![3, 4, 5]],
+        );
     }
 }
 
 #[cfg(test)]
 mod bc_tests {
+    use petgraph::algo::ford_fulkerson;
+    use petgraph::graph::DiGraph;
+    use petgraph::visit::Dfs;
     use petgraph::visit::{IntoNodeReferences, NodeFiltered};
-    use petgraph::graph::{DiGraph};
-    use petgraph::algo::{ford_fulkerson};
-    use petgraph::visit::{Dfs};
 
-    use crate::testing::graph_enumerator::GraphEnumeratorState;
-    use crate::testing::random_graphs::{random_connected_graph};
     use super::*;
+    #[cfg(not(debug_assertions))]
+    use crate::testing::graph_enumerator::GraphEnumeratorState;
+    use crate::testing::random_graphs::random_connected_graph;
 
     /// Based on Menger's theorem and flow networks.
     fn are_biconnected_flows(in_graph: &UnGraph) -> Vec<Vec<bool>> {
@@ -642,7 +638,8 @@ mod bc_tests {
         }
         for (u, v) in in_graph
             .edge_references()
-            .map(|e| (e.source().index(), e.target().index())) {
+            .map(|e| (e.source().index(), e.target().index()))
+        {
             network.add_edge(NodeIndex::new(u + n), NodeIndex::new(v), 1);
             network.add_edge(NodeIndex::new(v + n), NodeIndex::new(u), 1);
         }
@@ -656,30 +653,28 @@ mod bc_tests {
                 if u == v {
                     continue;
                 }
-                res[u][v] = ford_fulkerson(&network, NodeIndex::new(u + n), NodeIndex::new(v)).0 > 1;
+                res[u][v] =
+                    ford_fulkerson(&network, NodeIndex::new(u + n), NodeIndex::new(v)).0 > 1;
             }
         }
 
         res
     }
 
-    fn check_if_component_is_biconnected(
-        component: &UnGraph
-    ) -> bool {
+    fn check_if_component_is_biconnected(component: &UnGraph) -> bool {
         if component.node_count() <= 2 {
             return true;
         }
 
         let matrix = are_biconnected_flows(component);
-        let sum: usize = matrix.iter()
+        let sum: usize = matrix
+            .iter()
             .map(|row| row.iter().filter(|&&b| b).count())
             .sum();
         sum == component.node_count() * (component.node_count() - 1) // matrix[v,v] = false
     }
 
-    fn find_articulation_points_brute(
-        graph: &UnGraph,
-    ) -> Vec<bool> {
+    fn find_articulation_points_brute(graph: &UnGraph) -> Vec<bool> {
         let n = graph.node_count();
         if n <= 2 {
             return vec![false; n]; // no articulation points in single node or two nodes
@@ -710,15 +705,16 @@ mod bc_tests {
         visited == graph.node_count()
     }
 
-    fn glue_bc_tree_back(
-        bct: &BlockCutTree,
-    ) -> Vec<(usize, usize)> {
+    fn glue_bc_tree_back(bct: &BlockCutTree) -> Vec<(usize, usize)> {
         let mut edges = vec![];
 
         for block in bct.blocks.iter() {
             for edge in block.edge_references() {
                 let (u, v) = (edge.source(), edge.target());
-                edges.push((*block.node_weight(u).unwrap() as usize, *block.node_weight(v).unwrap() as usize));
+                edges.push((
+                    *block.node_weight(u).unwrap() as usize,
+                    *block.node_weight(v).unwrap() as usize,
+                ));
             }
         }
 
@@ -836,7 +832,6 @@ mod bc_tests {
             original_edges.sort();
 
             assert_eq!(glued_edges, original_edges);
-
         }
     }
 
@@ -868,7 +863,6 @@ mod bc_tests {
                 original_edges.sort();
 
                 assert_eq!(glued_edges, original_edges);
-
             }
         }
     }

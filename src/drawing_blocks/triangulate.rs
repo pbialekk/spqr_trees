@@ -23,12 +23,12 @@ fn to_ungraph(graph: &DiGraph) -> UnGraph {
 
 fn do_embed(graph: &mut DiGraph) {
     let g_un = to_ungraph(graph);
-    let (is_planar, embedding) = is_planar(&g_un, false);
+    let (_is_planar, embedding) = is_planar(&g_un, false);
     *graph = embedding;
 }
 
 pub fn triangulate(graph: &UnGraph) -> DiGraph {
-    let (is_planar, mut g) = is_planar(graph, false);
+    let (_is_planar, mut g) = is_planar(graph, false);
     connect_components(&mut g);
     do_embed(&mut g);
     make_biconnected(&mut g);

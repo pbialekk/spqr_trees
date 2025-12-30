@@ -2,10 +2,8 @@ use spqr_trees::UnGraph;
 use spqr_trees::drawing_blocks::triangulate::triangulate;
 use spqr_trees::drawing_blocks::visualize::visualize_triangulation;
 use spqr_trees::embedding::is_planar;
-/// Example of triangulating a planar graph.
-/// I use it with `cargo run --example triangulate | dot -Tsvg > triangulate.svg`
+/// Usage: `cargo run --example triangulate | dot -Tsvg > drawing.svg`
 use spqr_trees::input::from_str;
-use spqr_trees::types::DiGraph;
 
 fn main() {
     // 0 -- 1
@@ -17,13 +15,20 @@ fn main() {
             2,3
             3,0
             ";
-    let g_undir: UnGraph = from_str(input);
-    let (is_planar, embedding) = is_planar(&g_undir, false);
+    // Or read from stdin if you prefer:
+    // let mut buffer = String::new();
+    // std::io::stdin().read_to_string(&mut buffer).unwrap();
+    // let g_undir: UnGraph = from_str(&buffer);
 
+    let g_undir: UnGraph = from_str(input);
+
+    // Triangulate
     let triangulated_graph = triangulate(&g_undir);
+
+    let (_, original_embedded) = is_planar(&g_undir, false);
 
     print!(
         "{}",
-        visualize_triangulation(&embedding, &triangulated_graph)
+        visualize_triangulation(&original_embedded, &triangulated_graph)
     );
 }
