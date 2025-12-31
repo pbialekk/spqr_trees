@@ -18,11 +18,11 @@
   <line x1="950" y1="725" x2="50" y2="50" stroke="black" stroke-width="2" marker-end="url(#arrow)"/>
   <line x1="50" y1="50" x2="275" y2="950" stroke="black" stroke-width="2" marker-end="url(#arrow)"/>
   <line x1="50" y1="50" x2="950" y2="725" stroke="black" stroke-width="2" marker-end="url(#arrow)"/>
-  <line x1="275" y1="500" x2="50" y2="50" stroke="green" stroke-width="2" marker-end="url(#arrow)"/>
-  <line x1="725" y1="725" x2="50" y2="50" stroke="green" stroke-width="2" marker-end="url(#arrow)"/>
-  <line x1="275" y1="500" x2="275" y2="950" stroke="red" stroke-width="2" marker-end="url(#arrow)"/>
-  <line x1="275" y1="500" x2="725" y2="725" stroke="blue" stroke-width="2" marker-end="url(#arrow)"/>
-  <line x1="500" y1="725" x2="275" y2="500" stroke="green" stroke-width="2" marker-end="url(#arrow)"/>
+  <line x1="275" y1="275" x2="50" y2="50" stroke="green" stroke-width="2" marker-end="url(#arrow)"/>
+  <line x1="275" y1="275" x2="275" y2="950" stroke="red" stroke-width="2" marker-end="url(#arrow)"/>
+  <line x1="275" y1="275" x2="950" y2="725" stroke="blue" stroke-width="2" marker-end="url(#arrow)"/>
+  <line x1="500" y1="725" x2="275" y2="275" stroke="green" stroke-width="2" marker-end="url(#arrow)"/>
+  <line x1="725" y1="725" x2="275" y2="275" stroke="green" stroke-width="2" marker-end="url(#arrow)"/>
   <line x1="500" y1="725" x2="275" y2="950" stroke="red" stroke-width="2" marker-end="url(#arrow)"/>
   <line x1="500" y1="725" x2="725" y2="725" stroke="blue" stroke-width="2" marker-end="url(#arrow)"/>
   <line x1="725" y1="725" x2="275" y2="950" stroke="red" stroke-width="2" marker-end="url(#arrow)"/>
@@ -34,14 +34,14 @@
   </defs>
   <circle cx="275" cy="950" r="6" fill="black" />
   <text x="275" y="950" font-family="Arial" font-size="12" fill="white" text-anchor="middle" dy=".3em">0</text>
-  <circle cx="725" cy="725" r="6" fill="black" />
-  <text x="725" y="725" font-family="Arial" font-size="12" fill="white" text-anchor="middle" dy=".3em">1</text>
   <circle cx="950" cy="725" r="6" fill="black" />
-  <text x="950" y="725" font-family="Arial" font-size="12" fill="white" text-anchor="middle" dy=".3em">2</text>
-  <circle cx="50" cy="50" r="6" fill="black" />
-  <text x="50" y="50" font-family="Arial" font-size="12" fill="white" text-anchor="middle" dy=".3em">3</text>
-  <circle cx="275" cy="500" r="6" fill="black" />
-  <text x="275" y="500" font-family="Arial" font-size="12" fill="white" text-anchor="middle" dy=".3em">4</text>
+  <text x="950" y="725" font-family="Arial" font-size="12" fill="white" text-anchor="middle" dy=".3em">1</text>
+  <circle cx="725" cy="725" r="6" fill="black" />
+  <text x="725" y="725" font-family="Arial" font-size="12" fill="white" text-anchor="middle" dy=".3em">2</text>
   <circle cx="500" cy="725" r="6" fill="black" />
-  <text x="500" y="725" font-family="Arial" font-size="12" fill="white" text-anchor="middle" dy=".3em">5</text>
+  <text x="500" y="725" font-family="Arial" font-size="12" fill="white" text-anchor="middle" dy=".3em">3</text>
+  <circle cx="275" cy="275" r="6" fill="black" />
+  <text x="275" y="275" font-family="Arial" font-size="12" fill="white" text-anchor="middle" dy=".3em">4</text>
+  <circle cx="50" cy="50" r="6" fill="black" />
+  <text x="50" y="50" font-family="Arial" font-size="12" fill="white" text-anchor="middle" dy=".3em">5</text>
 </svg>

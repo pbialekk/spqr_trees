@@ -11,13 +11,15 @@ fn main() {
     // |    |
     // 3 -- 2
     let input = "
-            0,1
-            1,2
+            0,2
+            0,4
+            0,5
+            1,4
+            1,5
             2,3
-            3,4
+            2,4
             4,5
-            5,0
-            ";
+    ";
 
     let g_undir: UnGraph = from_str(input);
 

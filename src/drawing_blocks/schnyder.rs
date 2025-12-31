@@ -1,3 +1,4 @@
+use super::circular_list::CircularList;
 use crate::types::DiGraph;
 use petgraph::visit::NodeIndexable;
 
@@ -74,16 +75,12 @@ pub fn draw(g: &DiGraph) -> DrawingResult {
 
     let f = [f0, f1, f2];
 
-    let mut prev = vec![usize::MAX; n];
-    let mut next = vec![usize::MAX; n];
+    let mut list = CircularList::new_disconnected((0..n).collect());
 
     // Initialize outer boundary: f0 -> f2 -> f1 -> f0
-    next[f[0]] = f[2];
-    prev[f[2]] = f[0];
-    next[f[2]] = f[1];
-    prev[f[1]] = f[2];
-    next[f[1]] = f[0];
-    prev[f[0]] = f[1];
+    list.link(f[0], f[2]);
+    list.link(f[2], f[1]);
+    list.link(f[1], f[0]);
 
     let mut ch = vec![0; n];
     let mut out = vec![false; n];
@@ -143,8 +140,8 @@ pub fn draw(g: &DiGraph) -> DrawingResult {
             continue;
         }
 
-        let p = prev[u];
-        let n_node = next[u];
+        let p = list.prev[u];
+        let n_node = list.next[u];
 
         let p_pos = ws.iter().position(|&x| x == p);
         if p_pos.is_none() {
@@ -161,8 +158,7 @@ pub fn draw(g: &DiGraph) -> DrawingResult {
         for i in 0..ws.len() - 1 {
             let u_curr = ws[i];
             let v_curr = ws[i + 1];
-            next[u_curr] = v_curr;
-            prev[v_curr] = u_curr;
+            list.link(u_curr, v_curr);
         }
 
         trees[0].add_edge(u, ws[0]);

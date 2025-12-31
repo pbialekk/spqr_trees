@@ -1,3 +1,4 @@
+use super::circular_list::CircularList;
 use super::faces::get_faces;
 use crate::{
     UnGraph,
@@ -85,27 +86,27 @@ fn make_biconnected(g: &mut DiGraph) {
         }
         visited_nodes.clear();
 
-        let mut f_vec: Vec<usize> = face.order.clone();
-        if f_vec.len() < 3 {
+        let mut list = CircularList::new(face.order.clone());
+        if list.size < 3 {
             continue;
         }
 
-        let first = f_vec[0];
-        let second = f_vec[1];
+        let first = list.vals[0];
+        let second = list.vals[1];
         let mut idx = 0;
 
         loop {
-            if f_vec.len() < 3 {
+            if list.size < 3 {
                 break;
             }
 
-            let a_idx = idx % f_vec.len();
-            let b_idx = (idx + 1) % f_vec.len();
-            let c_idx = (idx + 2) % f_vec.len();
+            let a_idx = idx;
+            let b_idx = list.next[a_idx];
+            let c_idx = list.next[b_idx];
 
-            let a = f_vec[a_idx];
-            let b = f_vec[b_idx];
-            let c = f_vec[c_idx];
+            let a = list.vals[a_idx];
+            let b = list.vals[b_idx];
+            let c = list.vals[c_idx];
 
             if b == first && c == second {
                 break;
@@ -114,11 +115,11 @@ fn make_biconnected(g: &mut DiGraph) {
             if visited[b] {
                 g.add_edge(g.from_index(a), g.from_index(c), EdgeLabel::Real);
                 g.add_edge(g.from_index(c), g.from_index(a), EdgeLabel::Real);
-                f_vec.remove(b_idx);
+                list.remove(b_idx);
             } else {
                 visited[b] = true;
                 visited_nodes.push(b);
-                idx += 1;
+                idx = b_idx;
             }
         }
     }
@@ -132,7 +133,7 @@ fn triangulate_faces(g: &mut DiGraph) {
     let mut visited_nodes = Vec::new();
 
     for face in faces {
-        let mut f_vec: Vec<usize> = face.order.iter().cloned().collect();
+        let f_vec = &face.order;
         if f_vec.len() < 3 {
             continue;
         }
@@ -150,14 +151,15 @@ fn triangulate_faces(g: &mut DiGraph) {
             }
         }
 
-        f_vec.rotate_left(start_idx);
+        let mut list = CircularList::new(f_vec.clone());
+        let current_idx = start_idx;
 
         for &v in &visited_nodes {
             visited[v] = false;
         }
         visited_nodes.clear();
 
-        let a_node = f_vec[0];
+        let a_node = list.vals[current_idx];
         for neighbor in g.neighbors(g.from_index(a_node)) {
             let neighbor_idx = g.to_index(neighbor);
             visited[neighbor_idx] = true;
@@ -165,25 +167,30 @@ fn triangulate_faces(g: &mut DiGraph) {
         }
 
         loop {
-            if f_vec.len() < 4 {
+            if list.size < 4 {
                 break;
             }
 
-            let a = f_vec[0];
-            let b = f_vec[1];
-            let c = f_vec[2];
-            let d = f_vec[3];
+            let a_idx = current_idx;
+            let b_idx = list.next[a_idx];
+            let c_idx = list.next[b_idx];
+            let d_idx = list.next[c_idx];
+
+            let a = list.vals[a_idx];
+            let b = list.vals[b_idx];
+            let c = list.vals[c_idx];
+            let d = list.vals[d_idx];
 
             if visited[c] {
                 g.add_edge(g.from_index(b), g.from_index(d), EdgeLabel::Real);
                 g.add_edge(g.from_index(d), g.from_index(b), EdgeLabel::Real);
-                f_vec.remove(2);
+                list.remove(c_idx);
             } else {
                 g.add_edge(g.from_index(a), g.from_index(c), EdgeLabel::Real);
                 g.add_edge(g.from_index(c), g.from_index(a), EdgeLabel::Real);
                 visited[c] = true;
                 visited_nodes.push(c);
-                f_vec.remove(1);
+                list.remove(b_idx);
             }
         }
     }
