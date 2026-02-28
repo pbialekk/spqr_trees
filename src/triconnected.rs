@@ -359,7 +359,7 @@ fn find_components(
 ///
 /// ## Reference
 /// - [Hopcroft, J., & Tarjan, R. (1973). Dividing a Graph into Triconnected Components. SIAM Journal on Computing, 2(3), 135–158.](https://epubs.siam.org/doi/10.1137/0202012)
-/// - [Explaining Hopcroft, Tarjan, Gutwenger, and Mutzel’s SPQR Decomposition Algorithm] (https://shoyamanishi.github.io/wailea/docs/spqr_explained/HTGMExplained.pdf)
+/// - [Explaining Hopcroft, Tarjan, Gutwenger, and Mutzel’s SPQR Decomposition Algorithm](https://shoyamanishi.github.io/wailea/docs/spqr_explained/HTGMExplained.pdf)
 #[embed_doc_image("tricon_full", "assets/split_components.svg")]
 pub fn get_triconnected_components(in_graph: &UnGraph) -> TriconnectedComponents {
     let n = in_graph.node_count();

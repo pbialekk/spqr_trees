@@ -52,7 +52,7 @@ pub struct DualGraph {
 /// - `points` - must allow for mapping from index to vertex point in the space (should be unique),
 /// - `graph` - graph.
 ///
-/// Based on (https://cp-algorithms.com/geometry/planar.html).
+/// Based on <https://cp-algorithms.com/geometry/planar.html>.
 pub fn get_dual_graph(points: &[Point], graph: &UnGraph) -> DualGraph {
     let n = points.len();
     assert!(graph.edge_count() > 0); // no edges => algorithm fails

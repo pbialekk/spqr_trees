@@ -29,8 +29,6 @@ pub struct BlockCutTree {
     pub preorder: Vec<usize>,
 }
 
-impl BlockCutTree {}
-
 /// Returns the lowest preorder vertex reachable from subtree of u [lowpoint].
 ///
 /// In addition, it finds biconnected components (blocks) and cut vertices.
@@ -301,7 +299,7 @@ pub fn get_block_cut_tree(graph: &UnGraph) -> BlockCutTree {
 /// Intended to use with `neato`.
 pub fn draw_skeleton_of_block_cut_tree(bct: &BlockCutTree) -> String {
     let mut output = String::from("graph {\n");
-    // It just works
+    // SGD layout mode with many iterations produces good results for tree-like structures
     output.push_str("  mode=sgd;\n");
     output.push_str("  maxiter=1000;\n");
     output.push_str("  node [style=filled];\n");
@@ -346,13 +344,15 @@ pub fn draw_skeleton_of_block_cut_tree(bct: &BlockCutTree) -> String {
     output
 }
 
-/// It does almost exact same thing as `draw_skeleton_of_block_cut_tree`,
-/// but it expands blocks into subgraphs.
+/// Outputs the full block-cut tree in DOT format, expanding blocks into subgraph clusters.
+///
+/// Similar to [`draw_skeleton_of_block_cut_tree`], but each block is drawn as a
+/// cluster subgraph showing its internal vertices and edges.
 ///
 /// Intended to use with `neato`.
 pub fn draw_full_block_cut_tree(bct: &BlockCutTree) -> String {
     let mut output = String::from("graph {\n");
-    // It just works for trees, draws without crossings
+    // SGD layout mode works well for trees, producing crossing-free layouts
     output.push_str("  mode=sgd;\n");
     output.push_str("  maxiter=1000;\n");
     output.push_str("  node [style=filled, shape=circle];\n");

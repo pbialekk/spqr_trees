@@ -10,7 +10,7 @@ use petgraph::graph::NodeIndex;
 ///
 /// Combinatorial embedding is defined by clockwise (or counterclockwise) order of edges around each vertex.
 ///
-/// Based on (https://www.sciencedirect.com/science/article/pii/0012365X9390316L)
+/// Based on <https://www.sciencedirect.com/science/article/pii/0012365X9390316L>
 ///
 /// Explanation (symbols aren't aligned with the paper for readability):
 /// - `block_emb` - number of combinatorial embeddings for each block in the block-cut tree

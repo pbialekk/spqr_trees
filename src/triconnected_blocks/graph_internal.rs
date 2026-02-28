@@ -4,7 +4,7 @@ use petgraph::visit::EdgeRef;
 
 use crate::{UnGraph, triconnected_blocks::outside_structures::EdgeType};
 
-/// Wrapper for `petgraph` implementation of a graph, because it forbids mutable access to edges brr...
+/// Internal graph representation that allows mutable access to edge data.
 #[derive(Debug, Clone)]
 pub struct GraphInternal {
     pub n: usize,                         // number of vertices

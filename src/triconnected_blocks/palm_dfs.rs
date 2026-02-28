@@ -62,7 +62,7 @@ fn dfs(u: usize, time: &mut usize, graph: &mut GraphInternal) {
 /// updating the `edge_type` field in the graph accordingly. After the DFS,
 /// all edges in `graph.edges` are oriented from source to target.
 ///
-/// The idea is pretty simple: we run DFS and we update `low1` and `low2` when we can
+/// The algorithm runs DFS and updates `low1` and `low2` incrementally.
 pub fn run_palm_dfs(graph: &mut GraphInternal, root: usize) {
     let mut time = 0;
     dfs(root, &mut time, graph);

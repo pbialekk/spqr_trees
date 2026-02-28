@@ -6,7 +6,7 @@ use crate::{
     triconnected::get_triconnected_components,
 };
 
-/// ## Overwiew
+/// ## Overview
 /// Given a biconnected graph `G`, this function returns its SPQR tree which is computed in linear time.
 ///
 /// For more information, refer to the triconnected.rs module documentation.
@@ -40,7 +40,7 @@ pub fn get_spqr_tree(graph: &UnGraph) -> SPQRTree {
     spqr_tree
 }
 
-/// ## Overwiew
+/// ## Overview
 /// Given a biconnected graph `G`, this function returns its rooted SPQR tree at the first component.
 ///
 /// After rooting the tree, `adj[u]` doesn't contain the parent component of `u` in the SPQR tree.

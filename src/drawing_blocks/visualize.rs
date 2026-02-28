@@ -243,8 +243,7 @@ pub fn visualize_schnyder(
     writeln!(output, "    </marker>").unwrap();
     writeln!(output, "  </defs>").unwrap();
 
-    // Redraw edges with markers if needed? I didn't add the attribute above.
-    // Let's just draw nodes on top.
+    // Draw nodes on top of edges
 
     // Draw nodes
     for i in 0..g.node_count() {

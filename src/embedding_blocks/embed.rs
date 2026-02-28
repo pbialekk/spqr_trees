@@ -74,7 +74,7 @@ pub fn dfs3(
             add_edge(graph, embedded_g, to, u);
             dfs3(graph, lr_stuff, left, right, to, embedded_g);
 
-            // stond przyszli
+            // process left and right subtree edges
 
             for eid in left[u].iter().rev() {
                 add_edge(graph, embedded_g, u, *eid);
