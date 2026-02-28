@@ -19,95 +19,89 @@ pub fn visualize_triangulation(original: &DiGraph, triangulated: &DiGraph) -> St
     .unwrap();
     writeln!(output).unwrap();
 
-    {
-        writeln!(output, "  subgraph cluster_original {{").unwrap();
-        writeln!(output, "    label=\"Original Graph\";").unwrap();
-        writeln!(output, "    fontname=\"Helvetica-Bold\";").unwrap();
-        writeln!(output, "    fontsize=16;").unwrap();
-        writeln!(output, "    color=\"#dddddd\";").unwrap();
-        writeln!(output, "    style=filled; fillcolor=\"#f9f9f9\";").unwrap();
-        writeln!(output, "    margin=20;").unwrap();
-
-        let prefix = "L";
-
-        // Nodes
-        for i in 0..original.node_count() {
-            writeln!(
-                output,
-                "    {}_{} [label=\"{}\", width=0.4];",
-                prefix,
-                i,
-                i + 1
-            )
-            .unwrap();
-        }
-
-        // Edges
-        for e in original.edge_references() {
-            let u = original.to_index(e.source());
-            let v = original.to_index(e.target());
-            if u > v {
-                continue;
-            }
-            writeln!(output, "    {}_{} -- {}_{};", prefix, u, prefix, v).unwrap();
-        }
-
-        writeln!(output, "  }}").unwrap();
-    }
+    write_graph_subgraph(
+        &mut output,
+        original,
+        "cluster_original",
+        "Original Graph",
+        "#f9f9f9",
+        "L",
+        None,
+    );
 
     writeln!(output).unwrap();
 
-    {
-        writeln!(output, "  subgraph cluster_triangulated {{").unwrap();
-        writeln!(output, "    label=\"Triangulated Graph\";").unwrap();
-        writeln!(output, "    fontname=\"Helvetica-Bold\";").unwrap();
-        writeln!(output, "    fontsize=16;").unwrap();
-        writeln!(output, "    color=\"#dddddd\";").unwrap();
-        writeln!(output, "    style=filled; fillcolor=\"#f0f8ff\";").unwrap(); // AliceBlue
-        writeln!(output, "    margin=20;").unwrap();
+    write_graph_subgraph(
+        &mut output,
+        triangulated,
+        "cluster_triangulated",
+        "Triangulated Graph",
+        "#f0f8ff",
+        "R",
+        Some(original),
+    );
 
-        let prefix = "R";
-
-        // Nodes
-        for i in 0..triangulated.node_count() {
-            writeln!(
-                output,
-                "    {}_{} [label=\"{}\", width=0.4];",
-                prefix,
-                i,
-                i + 1
-            )
-            .unwrap();
-        }
-
-        // Edges
-        for e in triangulated.edge_references() {
-            let u = triangulated.to_index(e.source());
-            let v = triangulated.to_index(e.target());
-            if u > v {
-                continue;
-            }
-
-            let is_new = !original.contains_edge(original.from_index(u), original.from_index(v));
-
-            let (color, width, style) = if is_new {
-                ("#FF5733", "2.5", "")
-            } else {
-                ("#333333", "1.5", "")
-            };
-
-            writeln!(
-                output,
-                "    {}_{} -- {}_{} [color=\"{}\", penwidth={} {}];",
-                prefix, u, prefix, v, color, width, style
-            )
-            .unwrap();
-        }
-
-        writeln!(output, "  }}").unwrap();
-    }
     writeln!(output, "}}").unwrap();
     output
+}
+
+/// Writes a DOT subgraph cluster for a directed graph.
+///
+/// If `highlight_against` is provided, edges not in that graph are highlighted in red.
+fn write_graph_subgraph(
+    output: &mut String,
+    graph: &DiGraph,
+    cluster_id: &str,
+    label: &str,
+    fillcolor: &str,
+    prefix: &str,
+    highlight_against: Option<&DiGraph>,
+) {
+    writeln!(output, "  subgraph {} {{", cluster_id).unwrap();
+    writeln!(output, "    label=\"{}\";", label).unwrap();
+    writeln!(output, "    fontname=\"Helvetica-Bold\";").unwrap();
+    writeln!(output, "    fontsize=16;").unwrap();
+    writeln!(output, "    color=\"#dddddd\";").unwrap();
+    writeln!(output, "    style=filled; fillcolor=\"{}\";", fillcolor).unwrap();
+    writeln!(output, "    margin=20;").unwrap();
+
+    for i in 0..graph.node_count() {
+        writeln!(
+            output,
+            "    {}_{} [label=\"{}\", width=0.4];",
+            prefix,
+            i,
+            i + 1
+        )
+        .unwrap();
+    }
+
+    for e in graph.edge_references() {
+        let u = graph.to_index(e.source());
+        let v = graph.to_index(e.target());
+        if u > v {
+            continue;
+        }
+
+        if let Some(orig) = highlight_against {
+            let is_new = !orig.contains_edge(orig.from_index(u), orig.from_index(v));
+            let (color, width) = if is_new {
+                ("#FF5733", "2.5")
+            } else {
+                ("#333333", "1.5")
+            };
+            writeln!(
+                output,
+                "    {}_{} -- {}_{} [color=\"{}\", penwidth={} ];",
+                prefix, u, prefix, v, color, width
+            )
+            .unwrap();
+        } else {
+            writeln!(output, "    {}_{} -- {}_{};", prefix, u, prefix, v).unwrap();
+        }
+    }
+
+    writeln!(output, "  }}").unwrap();
 }
 
 /// Generates an SVG representation of the graph drawn using Schnyder's algorithm.
@@ -116,34 +110,22 @@ pub fn visualize_schnyder(
     drawing: &crate::drawing_blocks::schnyder::DrawingResult,
 ) -> String {
     let mut output = String::new();
-    let width = 1000.0;
-    let height = 1000.0;
-    let padding = 50.0;
+    let width = 1000.0_f64;
+    let height = 1000.0_f64;
+    let padding = 50.0_f64;
 
-    // Find bounds
-    let mut max_x = 0.0;
-    let mut max_y = 0.0;
-    for &(x, y) in &drawing.coordinates {
-        let x = x as f64;
-        let y = y as f64;
-        if x > max_x {
-            max_x = x;
-        }
-        if y > max_y {
-            max_y = y;
-        }
-    }
+    // Find coordinate bounds
+    let (max_x, max_y) = drawing.coordinates.iter().fold((0.0_f64, 0.0_f64), |(mx, my), &(x, y)| {
+        (mx.max(x as f64), my.max(y as f64))
+    });
 
-    // Scale
-    let scale_x = if max_x > 0.0 {
-        (width - 2.0 * padding) / max_x
-    } else {
-        1.0
-    };
-    let scale_y = if max_y > 0.0 {
-        (height - 2.0 * padding) / max_y
-    } else {
-        1.0
+    // Compute scaling factors
+    let scale_x = if max_x > 0.0 { (width - 2.0 * padding) / max_x } else { 1.0 };
+    let scale_y = if max_y > 0.0 { (height - 2.0 * padding) / max_y } else { 1.0 };
+
+    // Transform a graph coordinate to SVG coordinate
+    let to_svg = |x: i64, y: i64| -> (f64, f64) {
+        (padding + x as f64 * scale_x, height - (padding + y as f64 * scale_y))
     };
 
     writeln!(
@@ -159,44 +141,32 @@ pub fn visualize_schnyder(
     .unwrap();
 
     // Draw grid
-    let _grid_step_x = max_x.max(1.0) / 10.0;
-    let _grid_step_y = max_y.max(1.0) / 10.0; // Draw 10 lines roughly
+    let grid_step = if max_x > 20.0 || max_y > 20.0 { 5.0 } else { 1.0 };
 
-    // Draw simple grid lines (integers)
     writeln!(output, "  <g stroke=\"#999\" stroke-width=\"1\">").unwrap();
-    // Horizontal
+    // Horizontal grid lines
     let mut y = 0.0;
     while y <= max_y {
-        let sy = height - (padding + y * scale_y);
-        let sx_start = padding;
-        let sx_end = width - padding;
+        let (sx_start, sy) = (padding, to_svg(0, y as i64).1);
         writeln!(
             output,
             "    <line x1=\"{}\" y1=\"{}\" x2=\"{}\" y2=\"{}\" />",
-            sx_start, sy, sx_end, sy
+            sx_start, sy, width - padding, sy
         )
         .unwrap();
-        y += 1.0;
-        if max_y > 20.0 {
-            y += 4.0;
-        } // Skip if too dense
+        y += grid_step;
     }
-    // Vertical
+    // Vertical grid lines
     let mut x = 0.0;
     while x <= max_x {
-        let sx = padding + x * scale_x;
-        let sy_start = height - padding;
-        let sy_end = padding;
+        let (sx, _) = to_svg(x as i64, 0);
         writeln!(
             output,
             "    <line x1=\"{}\" y1=\"{}\" x2=\"{}\" y2=\"{}\" />",
-            sx, sy_start, sx, sy_end
+            sx, height - padding, sx, padding
         )
         .unwrap();
-        x += 1.0;
-        if max_x > 20.0 {
-            x += 4.0;
-        }
+        x += grid_step;
     }
     writeln!(output, "  </g>").unwrap();
 
@@ -204,16 +174,8 @@ pub fn visualize_schnyder(
     for (u, v, color) in &drawing.edge_colors {
         let (x1, y1) = drawing.coordinates[*u];
         let (x2, y2) = drawing.coordinates[*v];
-
-        let x1 = x1 as f64;
-        let y1 = y1 as f64;
-        let x2 = x2 as f64;
-        let y2 = y2 as f64;
-
-        let sx1 = padding + x1 * scale_x;
-        let sy1 = height - (padding + y1 * scale_y); // Flip Y for SVG
-        let sx2 = padding + x2 * scale_x;
-        let sy2 = height - (padding + y2 * scale_y);
+        let (sx1, sy1) = to_svg(x1, y1);
+        let (sx2, sy2) = to_svg(x2, y2);
 
         let stroke_color = match color {
             crate::drawing_blocks::schnyder::Color::Red => "red",
@@ -222,8 +184,6 @@ pub fn visualize_schnyder(
             crate::drawing_blocks::schnyder::Color::Black => "black",
         };
 
-        // Draw arrow?
-        // Simple line for now, maybe finding midpoint for arrow?
         writeln!(
             output,
             "  <line x1=\"{}\" y1=\"{}\" x2=\"{}\" y2=\"{}\" stroke=\"{}\" stroke-width=\"2\" marker-end=\"url(#arrow)\"/>",
@@ -244,14 +204,9 @@ pub fn visualize_schnyder(
     writeln!(output, "  </defs>").unwrap();
 
     // Draw nodes on top of edges
-
-    // Draw nodes
     for i in 0..g.node_count() {
         let (x, y) = drawing.coordinates[i];
-        let x = x as f64;
-        let y = y as f64;
-        let sx = padding + x * scale_x;
-        let sy = height - (padding + y * scale_y);
+        let (sx, sy) = to_svg(x, y);
 
         writeln!(
             output,
@@ -259,7 +214,6 @@ pub fn visualize_schnyder(
             sx, sy
         )
         .unwrap();
-        // ID label
         writeln!(output, "  <text x=\"{}\" y=\"{}\" font-family=\"Arial\" font-size=\"12\" fill=\"white\" text-anchor=\"middle\" dy=\".3em\">{}</text>", sx, sy, i).unwrap();
     }
 

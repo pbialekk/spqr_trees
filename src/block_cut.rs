@@ -292,6 +292,15 @@ pub fn get_block_cut_tree(graph: &UnGraph) -> BlockCutTree {
     block_cut_tree
 }
 
+/// Returns a DOT node identifier for a block-cut tree node.
+fn bct_node_id(idx: usize, block_count: usize) -> String {
+    if idx < block_count {
+        format!("block{}", idx)
+    } else {
+        format!("cut{}", idx)
+    }
+}
+
 /// Output a skeleton of the block-cut tree in DOT format.
 /// Biconnected components (blocks) are represented as green nodes labeled B_i.
 /// Cut vertices are represented as red nodes with their real labels.
@@ -325,19 +334,11 @@ pub fn draw_skeleton_of_block_cut_tree(bct: &BlockCutTree) -> String {
     // Add edges between blocks and cut vertices
     for edge in bct.graph.edge_references() {
         let (a, b) = (edge.source().index(), edge.target().index());
-        let a_str = if a < bct.block_count {
-            format!("block{}", a)
-        } else {
-            format!("cut{}", a)
-        };
-
-        let b_str = if b < bct.block_count {
-            format!("block{}", b)
-        } else {
-            format!("cut{}", b)
-        };
-
-        output.push_str(&format!("  {} -- {} [penwidth=2];\n", a_str, b_str));
+        output.push_str(&format!(
+            "  {} -- {} [penwidth=2];\n",
+            bct_node_id(a, bct.block_count),
+            bct_node_id(b, bct.block_count)
+        ));
     }
 
     output.push_str("}\n");

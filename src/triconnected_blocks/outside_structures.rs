@@ -20,6 +20,19 @@ pub enum ComponentType {
     UNSURE, // used for initial state
 }
 
+impl ComponentType {
+    /// Returns display metadata for visualization:
+    /// `(prefix, fill_color, node_color)`.
+    pub fn vis_colors(&self) -> (&'static str, &'static str, &'static str) {
+        match self {
+            ComponentType::R => ("#e6e6ff", "#ccccff", "R"),
+            ComponentType::P => ("#e6ffe6", "#ccffcc", "P"),
+            ComponentType::S => ("#ffe6e6", "#ffcccc", "S"),
+            ComponentType::UNSURE => panic!("Cannot visualize UNSURE component"),
+        }
+    }
+}
+
 impl std::fmt::Display for ComponentType {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match self {

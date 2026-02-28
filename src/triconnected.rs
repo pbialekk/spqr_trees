@@ -431,74 +431,40 @@ pub fn get_triconnected_components(in_graph: &UnGraph) -> TriconnectedComponents
 
     merge_components(graph.m, &mut split_components);
 
+    // Classify edges: count occurrences and determine real vs virtual
+    let mut edges_occs = vec![0; graph.m];
     let mut is_real_edge = vec![false; graph.m];
     let mut real_to_split_component = vec![None; graph.m];
 
-    let mut edges_occs = vec![0; graph.m];
     for (i, c) in split_components.iter().enumerate() {
         for &eid in &c.edges {
             edges_occs[eid] += 1;
-            is_real_edge[eid] = true;
-            real_to_split_component[eid] = Some(i);
-
-            if edges_occs[eid] > 1 {
-                is_real_edge[eid] = false; // this is a virtual edge
+            if edges_occs[eid] == 1 {
+                is_real_edge[eid] = true;
+                real_to_split_component[eid] = Some(i);
+            } else {
+                is_real_edge[eid] = false;
                 real_to_split_component[eid] = None;
             }
         }
     }
 
-    // on make_adjacency_lists_acceptable we renumbered the edges, we remap them now.
+    // Remap internal edge indices back to the original graph's edge ordering
+    let (new_edges, old_eid_to_new) =
+        remap_edge_indices(&graph, in_graph, &is_real_edge, &edges_occs);
 
-    let mut pair_to_indices: HashMap<(usize, usize), Vec<usize>> = HashMap::new();
-    let mut vedges = Vec::new();
-    for (eid, (s, t)) in graph.edges.iter().enumerate() {
-        let (s, t) = if s < t { (*s, *t) } else { (*t, *s) };
-
-        if is_real_edge[eid] {
-            pair_to_indices.entry((s, t)).or_default().push(eid);
-        } else if edges_occs[eid] != 0 {
-            vedges.push(eid);
-        }
-    }
-
-    let mut new_edges = Vec::with_capacity(graph.m);
-    let mut old_eid_to_new = vec![0; graph.m];
-    for eid in in_graph.edge_references() {
-        let (mut s, mut t) = (eid.source().index(), eid.target().index());
-
-        if s > t {
-            std::mem::swap(&mut s, &mut t);
-        }
-
-        let take = pair_to_indices.get_mut(&(s, t)).unwrap().pop().unwrap();
-        old_eid_to_new[take] = eid.id().index();
-        new_edges.push((s, t));
-    }
-
-    // vedges remain
-    for &eid in &vedges {
-        let (s, t) = graph.edges[eid];
-        old_eid_to_new[eid] = new_edges.len();
-        new_edges.push((s, t));
-    }
-
-    // remap indices
+    // Apply the remapping
     for c in &mut split_components {
-        for i in 0..c.edges.len() {
-            c.edges[i] = old_eid_to_new[c.edges[i]];
+        for eid in &mut c.edges {
+            *eid = old_eid_to_new[*eid];
         }
     }
+
     let mut new_is_real_edge = vec![false; new_edges.len()];
-    for i in 0..new_edges.len() {
-        if edges_occs[i] == 1 {
-            // a real edge
-            new_is_real_edge[old_eid_to_new[i]] = is_real_edge[i];
-        }
-    }
     let mut new_real_to_split_component = vec![None; new_edges.len()];
-    for i in 0..new_edges.len() {
+    for i in 0..graph.m {
         if edges_occs[i] == 1 {
+            new_is_real_edge[old_eid_to_new[i]] = is_real_edge[i];
             new_real_to_split_component[old_eid_to_new[i]] = real_to_split_component[i];
         }
     }
@@ -509,6 +475,52 @@ pub fn get_triconnected_components(in_graph: &UnGraph) -> TriconnectedComponents
         is_real: new_is_real_edge,
         to_split: new_real_to_split_component,
     }
+}
+
+/// Builds the mapping from internal edge indices to original graph edge indices.
+///
+/// Returns `(new_edges, old_eid_to_new)` where `new_edges` contains all edge pairs
+/// in the original order followed by virtual edges, and `old_eid_to_new[old_id]`
+/// gives the new index.
+fn remap_edge_indices(
+    graph: &GraphInternal,
+    in_graph: &UnGraph,
+    is_real_edge: &[bool],
+    edges_occs: &[usize],
+) -> (Vec<(usize, usize)>, Vec<usize>) {
+    fn ordered_pair(s: usize, t: usize) -> (usize, usize) {
+        if s < t { (s, t) } else { (t, s) }
+    }
+
+    let mut pair_to_indices: HashMap<(usize, usize), Vec<usize>> = HashMap::new();
+    let mut vedges = Vec::new();
+    for (eid, &(s, t)) in graph.edges.iter().enumerate() {
+        if is_real_edge[eid] {
+            pair_to_indices.entry(ordered_pair(s, t)).or_default().push(eid);
+        } else if edges_occs[eid] != 0 {
+            vedges.push(eid);
+        }
+    }
+
+    let mut new_edges = Vec::with_capacity(graph.m);
+    let mut old_eid_to_new = vec![0; graph.m];
+
+    // Map real edges in original graph order
+    for eid in in_graph.edge_references() {
+        let (s, t) = ordered_pair(eid.source().index(), eid.target().index());
+        let take = pair_to_indices.get_mut(&(s, t)).unwrap().pop().unwrap();
+        old_eid_to_new[take] = eid.id().index();
+        new_edges.push((s, t));
+    }
+
+    // Append virtual edges
+    for &eid in &vedges {
+        let (s, t) = graph.edges[eid];
+        old_eid_to_new[eid] = new_edges.len();
+        new_edges.push((s, t));
+    }
+
+    (new_edges, old_eid_to_new)
 }
 
 #[cfg(test)]
