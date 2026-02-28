@@ -46,7 +46,7 @@ pub fn is_planar(graph: &UnGraph, with_counterexample: bool) -> (bool, DiGraph) 
     // calculate LR orientation
     let mut lr_stuff = LrOrientation::new(n, m);
     for &u in &roots {
-        if !dfs2(&mut g, &mut lr_stuff, u) {
+        if !dfs2(&g, &mut lr_stuff, u) {
             return (
                 false,
                 get_counterexample(graph.clone(), with_counterexample),

@@ -105,12 +105,12 @@ pub fn draw(g: &DiGraph) -> DrawingResult {
     trees[2].add_edge(f[0], f[2]);
     trees[2].add_edge(f[1], f[2]);
 
-    let mut edge_colors_list = Vec::new();
-    // For drawing purposes, the outer face edges should be black.
-    edge_colors_list.push((f[1], f[0], Color::Black));
-    edge_colors_list.push((f[0], f[1], Color::Black));
-    edge_colors_list.push((f[0], f[2], Color::Black));
-    edge_colors_list.push((f[1], f[2], Color::Black));
+    let mut edge_colors_list = vec![
+        (f[1], f[0], Color::Black),
+        (f[0], f[1], Color::Black),
+        (f[0], f[2], Color::Black),
+        (f[1], f[2], Color::Black),
+    ];
 
     for _ in (2..n).rev() {
         let mut u = usize::MAX;
@@ -150,11 +150,10 @@ pub fn draw(g: &DiGraph) -> DrawingResult {
         let p_idx = p_pos.unwrap();
         ws.rotate_left(p_idx);
 
-        if ws.get(1) == Some(&n_node) {
-            if ws.len() > 2 {
+        if ws.get(1) == Some(&n_node)
+            && ws.len() > 2 {
                 ws[1..].reverse();
             }
-        }
         for i in 0..ws.len() - 1 {
             let u_curr = ws[i];
             let v_curr = ws[i + 1];

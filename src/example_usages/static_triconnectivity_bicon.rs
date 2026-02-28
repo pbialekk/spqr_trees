@@ -5,6 +5,9 @@ use crate::{
     triconnected_blocks::outside_structures::ComponentType,
 };
 
+/// Type alias for S-node link map: maps vertex to a pair of optional neighbor indices.
+type SLinkMap = HashMap<usize, (Option<usize>, Option<usize>)>;
+
 /// Implements a static triconnectivity algorithm.
 ///
 /// Using the SPQR-tree structure, this algorithm after a linear preprocessing answers queries in form `Are vertices a and b in the same triconnected component?` in constant time.
@@ -13,18 +16,17 @@ use crate::{
 ///
 /// ## Reference:
 /// - [On-line maintenance of triconnected components with SPQR-trees](https://link.springer.com/article/10.1007/BF01961541)
-
 #[allow(dead_code)]
 pub struct StaticBiconnectedTriconnectivity {
     tree: RootedSPQRTree,
 
-    s_links: Vec<HashMap<usize, (Option<usize>, Option<usize>)>>,
+    s_links: Vec<SLinkMap>,
 }
 
 #[allow(dead_code)]
 impl StaticBiconnectedTriconnectivity {
     pub fn new(graph: &UnGraph) -> Self {
-        let tree = get_rooted_spqr_tree(&graph);
+        let tree = get_rooted_spqr_tree(graph);
 
         let mut s_links = vec![HashMap::new(); tree.adj.len()];
 
@@ -33,7 +35,7 @@ impl StaticBiconnectedTriconnectivity {
             tree: &RootedSPQRTree,
             u: usize,
             mark: &mut Vec<bool>,
-            s_links: &mut Vec<HashMap<usize, (Option<usize>, Option<usize>)>>,
+            s_links: &mut Vec<SLinkMap>,
         ) {
             for &eid in tree.blocks.comp[u].edges.iter() {
                 let (a, b) = tree.blocks.edges[eid];
@@ -60,7 +62,7 @@ impl StaticBiconnectedTriconnectivity {
             }
         }
 
-        if tree.blocks.comp.len() > 0 {
+        if !tree.blocks.comp.is_empty() {
             dfs(&tree, 0, &mut mark, &mut s_links);
 
             StaticBiconnectedTriconnectivity { tree, s_links }
@@ -90,7 +92,7 @@ impl StaticBiconnectedTriconnectivity {
             return true;
         }
 
-        if self.tree.blocks.comp.len() == 0 {
+        if self.tree.blocks.comp.is_empty() {
             return false;
         }
 
@@ -113,13 +115,11 @@ impl StaticBiconnectedTriconnectivity {
                 }
             }
         }
-        if proper_a_type == ComponentType::S {
-            if let Some(&(link_1, link_2)) = self.s_links[proper_a].get(&a) {
-                if self.are_poles(a, b, link_1) || self.are_poles(a, b, link_2) {
+        if proper_a_type == ComponentType::S
+            && let Some(&(link_1, link_2)) = self.s_links[proper_a].get(&a)
+                && (self.are_poles(a, b, link_1) || self.are_poles(a, b, link_2)) {
                     return true;
                 }
-            }
-        }
 
         if !rep {
             return self.query(b, a, true);

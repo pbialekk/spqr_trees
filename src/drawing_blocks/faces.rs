@@ -23,10 +23,10 @@ pub fn get_faces(graph: &DiGraph) -> Vec<Face> {
     }
 
     let mut adj = vec![Vec::new(); n];
-    for u in 0..n {
+    for (u, adj_u) in adj.iter_mut().enumerate().take(n) {
         let u_idx = graph.from_index(u);
         for e in graph.edges(u_idx) {
-            adj[u].push(e.id());
+            adj_u.push(e.id());
         }
     }
 

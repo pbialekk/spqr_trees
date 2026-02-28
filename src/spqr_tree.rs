@@ -79,7 +79,7 @@ pub fn get_rooted_spqr_tree(graph: &UnGraph) -> RootedSPQRTree {
         }
     }
 
-    if rooted_spqr.blocks.comp.len() > 0 {
+    if !rooted_spqr.blocks.comp.is_empty() {
         root_tree(&mut rooted_spqr, 0, &mut mark);
     }
 

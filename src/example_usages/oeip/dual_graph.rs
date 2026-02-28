@@ -15,6 +15,12 @@ pub struct Face {
     pub vertices: HashSet<usize>,
 }
 
+impl Default for Face {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
 impl Face {
     pub fn new() -> Self {
         Face {
@@ -159,13 +165,13 @@ pub fn get_dual_graph(points: &[Point], graph: &UnGraph) -> DualGraph {
     }
 
 
-    let dual_graph = DualGraph {
+    
+
+    DualGraph {
         faces,
         graph,
         outer_face: outer_face.unwrap(),
-    };
-
-    dual_graph
+    }
 }
 
 mod tests {

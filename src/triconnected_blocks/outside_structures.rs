@@ -46,7 +46,7 @@ impl Component {
     pub fn new(comp_type: ComponentType) -> Self {
         Self {
             edges: Vec::new(),
-            comp_type: comp_type,
+            comp_type,
         }
     }
 

@@ -130,19 +130,17 @@ fn find_components(
 
                 component.commit(split_components);
 
-                if let Some(&eid) = estack.last() {
-                    if graph.edges[eid] == (to, u) {
+                if let Some(&eid) = estack.last()
+                    && graph.edges[eid] == (to, u) {
                         estack.pop();
                         eab = Some(eid);
                     }
-                }
             } else {
                 to = graph.numrev[b];
 
                 tstack.pop();
                 let mut component = Component::new(ComponentType::UNSURE);
-                loop {
-                    if let Some(&eid) = estack.last() {
+                while let Some(&eid) = estack.last() {
                         let (x, y) = graph.edges[eid];
 
                         let x_in_subtree = graph.num[u] <= graph.num[x] && graph.num[x] <= h;
@@ -158,9 +156,6 @@ fn find_components(
                         } else {
                             component.push_edge(eid, graph, false);
                         }
-                    } else {
-                        break;
-                    }
                 }
 
                 evirt = graph.new_edge(u, to, None);
@@ -373,7 +368,7 @@ pub fn get_triconnected_components(in_graph: &UnGraph) -> TriconnectedComponents
 
     let mut split_components = Vec::new();
 
-    assert!(get_block_cut_tree(&in_graph).block_count == 1);
+    assert!(get_block_cut_tree(in_graph).block_count == 1);
     assert!(n >= 2);
 
     if n == 2 {

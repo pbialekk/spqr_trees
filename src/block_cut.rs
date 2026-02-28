@@ -43,6 +43,7 @@ impl BlockCutTree {}
 /// - Graph must be connected, otherwise you will get only first BC tree not the forest.
 ///
 /// </div>
+#[allow(clippy::too_many_arguments)]
 fn dfs(
     graph: &UnGraph,
     // NodeIndex not label!!!
@@ -188,7 +189,7 @@ pub fn get_block_cut_tree(graph: &UnGraph) -> BlockCutTree {
             preorder: vec![0],
         };
 
-        block_cut_tree.blocks[0].add_node(graph.node_weight(NodeIndex::new(0)).unwrap().clone());
+        block_cut_tree.blocks[0].add_node(*graph.node_weight(NodeIndex::new(0)).unwrap());
         block_cut_tree.graph.add_node(0);
 
         return block_cut_tree;
@@ -241,7 +242,7 @@ pub fn get_block_cut_tree(graph: &UnGraph) -> BlockCutTree {
 
         // And just insert labels to the block graph
         for u in block_vertices {
-            let label = graph.node_weight(NodeIndex::new(u)).unwrap().clone();
+            let label = *graph.node_weight(NodeIndex::new(u)).unwrap();
             bicon_internal_indices[u] = block_graph.add_node(label).index();
             block_cut_tree.node_to_id[u] = i;
         }
@@ -269,7 +270,7 @@ pub fn get_block_cut_tree(graph: &UnGraph) -> BlockCutTree {
         if is_cut[u] {
             block_cut_tree.node_to_id[u] = block_cut_tree
                 .graph
-                .add_node(graph.node_weight(NodeIndex::new(u)).unwrap().clone())
+                .add_node(*graph.node_weight(NodeIndex::new(u)).unwrap())
                 .index();
             block_cut_tree.cut_count += 1;
         }

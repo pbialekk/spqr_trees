@@ -85,7 +85,7 @@ impl GraphInternal {
         self.deg[t] -= 1;
     }
     pub fn make_tedge(&mut self, eid: usize) {
-        debug_assert!(self.edge_type[eid] == None);
+        debug_assert!(self.edge_type[eid].is_none());
 
         self.edge_type[eid] = Some(EdgeType::Tree);
         let (s, t) = self.edges[eid];
@@ -94,7 +94,7 @@ impl GraphInternal {
         self.par[t] = Some(s);
     }
     pub fn make_bedge(&mut self, eid: usize) {
-        debug_assert!(self.edge_type[eid] == None);
+        debug_assert!(self.edge_type[eid].is_none());
 
         self.edge_type[eid] = Some(EdgeType::Back);
         let (s, t) = self.edges[eid];

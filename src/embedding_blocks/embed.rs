@@ -20,7 +20,7 @@ pub fn embed_graph(
             lr_stuff.side[eid] *= sign(lr_stuff.ref_edge[eid], lr_stuff);
             lr_stuff.ref_edge[eid] = usize::MAX;
         }
-        return lr_stuff.side[eid];
+        lr_stuff.side[eid]
     }
 
     for i in 0..graph.m {
