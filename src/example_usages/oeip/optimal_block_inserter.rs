@@ -25,13 +25,13 @@ use crate::{
 /// 1. Compute SPQR tree of the input graph.
 /// 2. Find the shortest path between arbitrary allocation nodes of `u` and `v` in the SPQR tree.
 /// 3. Delete S and P nodes from the path. You can always insert edge without crossing.
-/// Leave R nodes, they are easy problems because they have only 2 embeddings.
+///    Leave R nodes, they are easy problems because they have only 2 embeddings.
 /// 4. For each R node in the path, iteratively, expand its edges (without virtual edges of `u` and `v`).
 /// + Find arbitrary embedding of the expanded graph.
 /// + Construct dual graph of the expanded graph.
 /// + Add two new nodes to the dual graph, one for `u` and one for `v`. Connect them to adjacent faces.
 /// + Find the shortest path between `u'` and `v'` in the dual graph.
-/// This is your number of crossings in this component.
+///   This is your number of crossings in this component.
 /// 5. Sum up the number of crossings for all R nodes in the path.
 ///
 /// ## Testing:
@@ -51,7 +51,6 @@ use crate::{
 ///
 /// ## Reference:
 /// - [Optimal Edge Insertion Problem](https://www.ac.tuwien.ac.at/files/pub/Gutwenger01.pdf)
-
 #[allow(dead_code)]
 #[derive(Debug, Clone)]
 pub struct OptimalBlockInserter {
@@ -74,7 +73,7 @@ impl OptimalBlockInserter {
     pub fn new(graph: &UnGraph, points: Vec<Point>) -> Self {
         assert!(is_planar(graph, false).0, "Graph must be planar");
 
-        let tree = get_spqr_tree(&graph);
+        let tree = get_spqr_tree(graph);
         let mut component_vertex_set = vec![HashSet::new(); tree.blocks.comp.len()];
         let mut first_allocation_node = vec![None; graph.node_references().count()];
         let mut pair_of_components_to_virt_edge = HashMap::new();
@@ -131,7 +130,7 @@ impl OptimalBlockInserter {
             }
         }
 
-        if tree.blocks.comp.len() > 0 {
+        if !tree.blocks.comp.is_empty() {
             populate_allocation_info(
                 &tree,
                 &mut first_allocation_node,
@@ -223,7 +222,7 @@ impl OptimalBlockInserter {
     /// Deletes S and P nodes from the path between two allocation nodes.
     ///
     /// They are not relevant.
-    fn delete_sp_nodes_from_path(&self, path: &Vec<usize>) -> Vec<usize> {
+    fn delete_sp_nodes_from_path(&self, path: &[usize]) -> Vec<usize> {
         let mut reduced_path = vec![];
         for &node in path.iter() {
             if self.tree.blocks.comp[node].comp_type == ComponentType::R {
@@ -344,7 +343,7 @@ impl OptimalBlockInserter {
             let mut dual_graph = get_dual_graph(&points, &expanded_graph);
 
             let mut xids = vec![];
-            let indices = vec![u, v];
+            let indices = [u, v];
 
             // Augment dual graph with src and dst
             for (i, edge) in [u_virt_edge, v_virt_edge].iter().enumerate() {
@@ -422,8 +421,8 @@ mod tests {
         let (x1, y1) = ((u / cols) as i32, (u % cols) as i32);
         let (x2, y2) = ((v / cols) as i32, (v % cols) as i32);
 
-        let d_vertical = (x1 as i32 - x2 as i32).abs();
-        let d_horizontal = (y1 as i32 - y2 as i32).abs();
+        let d_vertical = (x1 - x2).abs();
+        let d_horizontal = (y1 - y2).abs();
         let mut manhattan = d_vertical + d_horizontal;
         if d_vertical > 0 {
             manhattan -= 1;

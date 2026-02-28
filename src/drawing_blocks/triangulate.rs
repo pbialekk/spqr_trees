@@ -22,24 +22,8 @@ fn to_ungraph(graph: &DiGraph) -> UnGraph {
     g
 }
 
-fn do_embed(graph: &mut DiGraph) {
-    let g_un = to_ungraph(graph);
-    let (_is_planar, embedding) = is_planar(&g_un, false);
-    *graph = embedding;
-}
-
-pub fn triangulate(graph: &UnGraph) -> DiGraph {
-    let (_is_planar, mut g) = is_planar(graph, false);
-    connect_components(&mut g);
-    do_embed(&mut g);
-    make_biconnected(&mut g);
-    do_embed(&mut g);
-    triangulate_faces(&mut g);
-    do_embed(&mut g);
-    g
-}
-
-fn connect_components(g: &mut DiGraph) {
+/// Finds one root vertex per connected component using a DFS traversal.
+fn find_component_roots(g: &DiGraph) -> Vec<usize> {
     let n = g.node_count();
     let mut visited = vec![false; n];
     let mut roots = Vec::new();
@@ -60,6 +44,29 @@ fn connect_components(g: &mut DiGraph) {
             }
         }
     }
+
+    roots
+}
+
+fn do_embed(graph: &mut DiGraph) {
+    let g_un = to_ungraph(graph);
+    let (_is_planar, embedding) = is_planar(&g_un, false);
+    *graph = embedding;
+}
+
+pub fn triangulate(graph: &UnGraph) -> DiGraph {
+    let (_is_planar, mut g) = is_planar(graph, false);
+    connect_components(&mut g);
+    do_embed(&mut g);
+    make_biconnected(&mut g);
+    do_embed(&mut g);
+    triangulate_faces(&mut g);
+    do_embed(&mut g);
+    g
+}
+
+fn connect_components(g: &mut DiGraph) {
+    let roots = find_component_roots(g);
 
     for i in 0..roots.len().saturating_sub(1) {
         let u = roots[i];
@@ -238,17 +245,7 @@ mod tests {
                 let (planar, _) = is_planar(&g, false);
                 if planar {
                     let tri_g_directed = triangulate(&g);
-                    let mut tri_g = UnGraph::new_undirected();
-                    for _ in 0..tri_g_directed.node_count() {
-                        tri_g.add_node(0);
-                    }
-                    for e in tri_g_directed.edge_references() {
-                        let u = e.source();
-                        let v = e.target();
-                        if u.index() < v.index() {
-                            tri_g.add_edge(u, v, EdgeLabel::Real);
-                        }
-                    }
+                    let tri_g = to_ungraph(&tri_g_directed);
 
                     // Verify planarity
                     let (is_p, _) = is_planar(&tri_g, false);

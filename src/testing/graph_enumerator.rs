@@ -2,10 +2,16 @@ use petgraph::visit::NodeIndexable;
 
 use crate::{EdgeLabel, UnGraph};
 
+/// Enumerates all simple graphs on `n` vertices by iterating over edge subsets.
+///
+/// Each bit in `mask` corresponds to one of the `n*(n-1)/2` possible edges.
 #[allow(dead_code)]
 pub struct GraphEnumeratorState {
+    /// Number of vertices.
     pub n: usize,
+    /// Current bitmask of edges.
     pub mask: usize,
+    /// One past the last valid bitmask.
     pub last_mask: usize,
 }
 

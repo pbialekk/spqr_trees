@@ -1,5 +1,21 @@
-use crate::triconnected_blocks::outside_structures::{ComponentType, TriconnectedComponents};
+use crate::triconnected_blocks::outside_structures::TriconnectedComponents;
+use hashbrown::HashSet;
 use std::fmt::Write;
+
+/// Collects unique vertex indices from a set of edge indices.
+fn collect_nodes(edges: &[usize], all_edges: &[(usize, usize)]) -> Vec<usize> {
+    let mut seen = HashSet::new();
+    let mut nodes = Vec::new();
+    for &eid in edges {
+        let (from, to) = all_edges[eid];
+        for v in [from, to] {
+            if seen.insert(v) {
+                nodes.push(v);
+            }
+        }
+    }
+    nodes
+}
 
 /// Given a `TriconnectedComponents` structure, this function generates a
 /// Graphviz DOT representation of the triconnected components of a graph.
@@ -16,18 +32,11 @@ pub fn visualize_triconnected(tricon: &TriconnectedComponents) -> String {
         writeln!(output, "  subgraph cluster_graph {{").unwrap();
         writeln!(output, "    label=\"Graph\";").unwrap();
         writeln!(output, "    style=filled; fillcolor=\"#f0f0f0\";").unwrap();
-        let mut nodes = Vec::new();
-        for (from, to) in &tricon.edges {
-            if !nodes.contains(&from) {
-                nodes.push(from);
-            }
-            if !nodes.contains(&to) {
-                nodes.push(to);
-            }
-        }
 
-        // Nodes
-        for v in nodes {
+        let real_eids: Vec<usize> = (0..tricon.edges.len()).filter(|&i| tricon.is_real[i]).collect();
+        let nodes = collect_nodes(&real_eids, &tricon.edges);
+
+        for v in &nodes {
             writeln!(
                 output,
                 "    {} [label=\"{}\", shape=circle, fillcolor=\"#ffffff\", style=filled];",
@@ -37,16 +46,14 @@ pub fn visualize_triconnected(tricon: &TriconnectedComponents) -> String {
         }
         writeln!(output).unwrap();
 
-        // Edges
-        for (eid, (from, to)) in tricon.edges.iter().enumerate() {
-            if tricon.is_real[eid] {
-                writeln!(
-                    output,
-                    "    {} -- {} [label=\"{}\", color=black];",
-                    from, to, eid
-                )
-                .unwrap();
-            }
+        for &eid in &real_eids {
+            let (from, to) = tricon.edges[eid];
+            writeln!(
+                output,
+                "    {} -- {} [label=\"{}\", color=black];",
+                from, to, eid
+            )
+            .unwrap();
         }
 
         writeln!(output, "  }}").unwrap();
@@ -54,47 +61,16 @@ pub fn visualize_triconnected(tricon: &TriconnectedComponents) -> String {
     }
 
     for (i, comp) in tricon.comp.iter().enumerate() {
-        let (prefix, label, fillcolor, nodecolor) = match comp.comp_type {
-            ComponentType::R => (
-                "R",
-                format!("R-component ({})", i + 1),
-                "#e6e6ff",
-                "#ccccff",
-            ),
-            ComponentType::P => (
-                "P",
-                format!("P-component ({})", i + 1),
-                "#e6ffe6",
-                "#ccffcc",
-            ),
-            ComponentType::S => (
-                "S",
-                format!("S-component ({})", i + 1),
-                "#ffe6e6",
-                "#ffcccc",
-            ),
-            _ => {
-                panic!();
-            }
-        };
+        let (fillcolor, nodecolor, prefix) = comp.comp_type.vis_colors();
+        let label = format!("{}-component ({})", prefix, i + 1);
 
         writeln!(output, "  subgraph cluster_{}{} {{", prefix, i + 1).unwrap();
         writeln!(output, "    label=\"{}\";", label).unwrap();
         writeln!(output, "    style=filled; fillcolor=\"{}\";", fillcolor).unwrap();
 
-        let mut nodes = Vec::new();
-        for &v in &comp.edges {
-            let (from, to) = tricon.edges[v];
-            if !nodes.contains(&from) {
-                nodes.push(from);
-            }
-            if !nodes.contains(&to) {
-                nodes.push(to);
-            }
-        }
+        let nodes = collect_nodes(&comp.edges, &tricon.edges);
 
-        // Nodes
-        for v in nodes {
+        for v in &nodes {
             writeln!(
                 output,
                 "    {}{}_{} [label=\"{}\", shape=circle, fillcolor=\"{}\", style=filled];",
@@ -108,29 +84,17 @@ pub fn visualize_triconnected(tricon: &TriconnectedComponents) -> String {
         }
         writeln!(output).unwrap();
 
-        // Edges
         for e in &comp.edges {
-            let (from, to, label, is_virtual) = (
-                tricon.edges[*e].0,
-                tricon.edges[*e].1,
-                *e,
-                !tricon.is_real[*e],
-            );
+            let (from, to) = tricon.edges[*e];
+            let style = if tricon.is_real[*e] {
+                ", color=black"
+            } else {
+                ", style=dashed, color=gray"
+            };
             writeln!(
                 output,
                 "    {}{}_{} -- {}{}_{} [label=\"{}\"{}];",
-                prefix,
-                i + 1,
-                from,
-                prefix,
-                i + 1,
-                to,
-                label,
-                if is_virtual {
-                    ", style=dashed, color=gray"
-                } else {
-                    ", color=black"
-                }
+                prefix, i + 1, from, prefix, i + 1, to, e, style
             )
             .unwrap();
         }

@@ -11,7 +11,7 @@ pub fn make_adjacency_lists_acceptable(graph: &mut GraphInternal) {
 
     for eid in 0..graph.m {
         let edge_value = phi(eid);
-        buckets[edge_value as usize].push(eid);
+        buckets[edge_value].push(eid);
     }
 
     let mut new_adj = vec![vec![]; graph.n];

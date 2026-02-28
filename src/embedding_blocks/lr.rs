@@ -54,12 +54,12 @@ pub fn dfs2(g: &GraphInternal, lr_stuff: &mut LrOrientation, u: usize) -> bool {
                         lr_stuff.ref_edge[par_eid] = hr;
                     }
                 } else {
-                    assert!(false);
+                    unreachable!();
                 }
             } else if let Some((_, hr)) = hr {
                 lr_stuff.ref_edge[par_eid] = hr;
             } else {
-                assert!(false);
+                unreachable!();
             }
         }
     }

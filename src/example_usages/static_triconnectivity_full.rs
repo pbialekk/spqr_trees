@@ -15,7 +15,6 @@ use crate::{
 ///
 /// ## Reference:
 /// - [On-line maintenance of triconnected components with SPQR-trees](https://link.springer.com/article/10.1007/BF01961541)
-
 #[allow(dead_code)]
 pub struct StaticTriconnectivity {
     tree: BlockCutTree,
@@ -29,13 +28,13 @@ pub struct StaticTriconnectivity {
 #[allow(dead_code)]
 impl StaticTriconnectivity {
     pub fn new(graph: &UnGraph) -> Self {
-        let bct = get_block_cut_tree(&graph);
+        let bct = get_block_cut_tree(graph);
 
         let mut triconnectivity_blocks = Vec::with_capacity(bct.blocks.len());
         let mut vertex_numbers_mapping = Vec::with_capacity(bct.node_to_id.len());
 
         for block in bct.blocks.iter() {
-            triconnectivity_blocks.push(StaticBiconnectedTriconnectivity::new(&block));
+            triconnectivity_blocks.push(StaticBiconnectedTriconnectivity::new(block));
 
             vertex_numbers_mapping.push(HashMap::new());
             for (i, v) in block.node_references().enumerate() {
@@ -69,11 +68,10 @@ impl StaticTriconnectivity {
     }
 
     fn check_block(&self, block_id: usize, a: usize, b: usize) -> bool {
-        if let Some(a_inside) = self.vertex_numbers_mapping[block_id].get(&a) {
-            if let Some(b_inside) = self.vertex_numbers_mapping[block_id].get(&b) {
+        if let Some(a_inside) = self.vertex_numbers_mapping[block_id].get(&a)
+            && let Some(b_inside) = self.vertex_numbers_mapping[block_id].get(&b) {
                 return self.triconnectivity_blocks[block_id].query(*a_inside, *b_inside, false);
             }
-        }
         false
     }
 

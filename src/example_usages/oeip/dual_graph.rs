@@ -15,6 +15,12 @@ pub struct Face {
     pub vertices: HashSet<usize>,
 }
 
+impl Default for Face {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
 impl Face {
     pub fn new() -> Self {
         Face {
@@ -46,7 +52,7 @@ pub struct DualGraph {
 /// - `points` - must allow for mapping from index to vertex point in the space (should be unique),
 /// - `graph` - graph.
 ///
-/// Based on (https://cp-algorithms.com/geometry/planar.html).
+/// Based on <https://cp-algorithms.com/geometry/planar.html>.
 pub fn get_dual_graph(points: &[Point], graph: &UnGraph) -> DualGraph {
     let n = points.len();
     assert!(graph.edge_count() > 0); // no edges => algorithm fails
@@ -159,13 +165,13 @@ pub fn get_dual_graph(points: &[Point], graph: &UnGraph) -> DualGraph {
     }
 
 
-    let dual_graph = DualGraph {
+    
+
+    DualGraph {
         faces,
         graph,
         outer_face: outer_face.unwrap(),
-    };
-
-    dual_graph
+    }
 }
 
 mod tests {

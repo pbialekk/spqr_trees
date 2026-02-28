@@ -10,7 +10,7 @@ use petgraph::graph::NodeIndex;
 ///
 /// Combinatorial embedding is defined by clockwise (or counterclockwise) order of edges around each vertex.
 ///
-/// Based on (https://www.sciencedirect.com/science/article/pii/0012365X9390316L)
+/// Based on <https://www.sciencedirect.com/science/article/pii/0012365X9390316L>
 ///
 /// Explanation (symbols aren't aligned with the paper for readability):
 /// - `block_emb` - number of combinatorial embeddings for each block in the block-cut tree
@@ -68,8 +68,8 @@ pub fn count_combinatorial_embeddings(graph: &UnGraph) -> usize {
     for i in 0..bc_tree.block_count {
         embeddings *= block_emb[i];
         // this part accounts for choosing first edges
-        for j in 0..bc_tree.cut_count {
-            embeddings *= edges_adj_v[j][i];
+        for edges_adj_entry in edges_adj_v.iter().take(bc_tree.cut_count) {
+            embeddings *= edges_adj_entry[i];
         }
     }
     // this part accounts for permutation of edges of biconnected component around cut vertex
